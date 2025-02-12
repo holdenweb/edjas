@@ -8,62 +8,53 @@ def extract_values(sheet, range_spec):
         result.append([c.value for c in row])
     return result
 
-def named_range_values(wb, range_name):
-    range_def = wb.defined_names[range_name]
-    reference = range_def.attr_text
-    sheet_name, range_spec = reference.split("!")
-    return extract_values(wb[sheet_name], range_spec)
+def range_values(wb, sheet, range_spec):
+    if range_spec in wb.defined_names:
+        range_spec = wb.defined_names[range_spec].attr_text
+    if "!" in range_spec:
+        sheet_name, cell_refs = range_spec.split("!")
+        sheet = wb[sheet_name]
+    else:
+        cell_refs = range_spec
+    return extract_values(sheet, cell_refs)
 
-def dict_range(workbook,range_name):
-    # Get the named range
-    if range_name not in workbook.defined_names:
-        raise ValueError(f"Named range '{range_name}' not found in the workbook.")
-
-    # Get the rows in the named range
-    rows = named_range_values(workbook, range_name)
-
+def range_to_dict(workbook, sheet, range_spec):
+    # Get the rows in the given range
+    rows = range_values(workbook, sheet, range_spec)
+    if len(rows[0]) != 2:
+        raise ValueError(f"Range spec {range_spec} should have two columns")
     # Initialize the result dictionary
     result = {}
     i = 0
-
-    while i < len(rows):
-        # Get the current row
-        key, value = rows[i]
-
+    for key, value in rows:
         # Skip empty rows, but complain about floating values
         if key is None:
             if value is None:
-                i += 1
                 continue
             else:
-                raise ValueError("Empty key not expected on value {value!r}: programming error?")
-
+                raise ValueError("Empty key not expected on value {value!r} - programming error?")
         # Check if the value is a range name enclosed in braces: dictionary
-        if value.startswith("{") and value.endswith("}"):
-            # Extract the named range name (e.g., "SubParameters" from "{SubParameters}")
-            ref_range_name = value[1:-1]
-            if ref_range_name in workbook.defined_names:
+        if type(value) is str:
+            if value.startswith("{") and value.endswith("}"):
+                # Extract the named range name (e.g., "SubParameters" from "{SubParameters}")
+                ref_range_spec = value[1:-1]
                 # Recursively process the referenced named range
-                result[key] = named_range_values(workbook, ref_range_name)
-                i += 1  # Ensure the loop advances after processing the nested range
+                result[key] = range_to_dict(workbook, sheet, ref_range_spec)
+            # Otherwise "[range]" references a list or matrix.
+            elif value.startswith("[") and value.endswith("]"):
+                ref_range_spec = value[1:-1]
+                result[key] = range_values(workbook, sheet, ref_range_spec)
             else:
-                raise ValueError(f"Named range {ref_range_name!r} not found in the workbook.")
-        # Otherwise "[name]" references a list or matrix "name"
-        elif value.startswith("[") and value.endswith("]"):
-            ref_range_name = value[1:-1]
-            result[key] = named_range_values(workbook, ref_range_name)
-            i += 1
+                result[key] = value
         else:
             # Single value
             result[key] = value
-            i += 1
-
     return result
 
 def read_file(file_name, range_name="Parameters"):
     # Load the Excel workbook
     workbook = openpyxl.load_workbook(file_name, data_only=False)
-    return dict_range(workbook, range_name)
+    return range_to_dict(workbook, workbook["Parameters"], range_name)
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:

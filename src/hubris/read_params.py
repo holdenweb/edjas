@@ -6,7 +6,12 @@ def extract_values(sheet, range_spec):
     result = []
     for row in sheet[range_spec]:
         result.append([c.value for c in row])
-    return result
+    if len(result) == 1:
+        return result[0]
+    elif len(result[0]) == 1:
+        return [r[0] for r in result]
+    else:
+        return result
 
 def range_values(wb, sheet, range_spec):
     if range_spec in wb.defined_names:

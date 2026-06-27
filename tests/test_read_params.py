@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from hubris import read_file
+from edjas import read_file
 
 FIXTURE = Path(__file__).parent / "data" / "parameters.xlsx"
 

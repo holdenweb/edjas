@@ -1,7 +1,7 @@
 [project]
 name = "edjas"
-version = "0.5.0"
-description = "Helpful Utility to Bring Reporting Into Spreadsheets"
+version = "0.5.1"
+description = "Extract data in JSON from any spreadsheet"
 authors = [
     { name = "Steve Holden", email = "steve@holdenweb.com" },
 ]

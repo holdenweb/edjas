@@ -26,7 +26,7 @@ treats the left-hand column as names and the right-hand column as values.
 Normally, the values are used literally after extraction from the spreadsheet.
 Two formats for the value are given special treatment.
 
-  - `[range-name]`: the named range is exported as a JSON list or, if  it's two-dimensionsl a list of row lists.
+  - `[range-name]`: the named range is exported as a JSON list or, if  it's two-dimensional a list of row lists.
   - `{range_name}`: The named range, which must be two columns wide, becomes a JSON object where the left-hand column specifies
     the names and the right-hand column specifies the values.
 
@@ -34,13 +34,13 @@ The parameter details are used to extract data from the spreadsheet, which is th
 
 ![Parameter specifications in EDJAS](images/parameters.png "Parameter specifications in EDJAS")
 
-In the example shown, the `version` key has a dict value, and in that dict the `number` key has a valiu of "1.0.2".
+In the example shown, the `version` key has a dict value, and in that dict the `number` key has a value of "1.0.2".
 The version number can therefore be referenced in the JSON output as `version.number`. The output from this example is shown below.
 
 
 ![Parameter data extracted from a spreadsheet](images/json.png "The parameter data")
 
-A demonstration of the system can be found at [https://gihtub.com/holdenweb/edjas-demo](https://gihtub.com/holdenweb/edjas-demo).
+A demonstration of the system can be found at [https://github.com/holdenweb/edjas-demo](https://github.com/holdenweb/edjas-demo).
 
 This is particularly useful for audiences that have an interest in only a
 limited number of features from a possibly quite large spreadsheet.

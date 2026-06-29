@@ -5,13 +5,14 @@ import sys
 from importlib.metadata import PackageNotFoundError, version
 
 from .read_params import read_file
+from .functions import DEFAULT_FUNCTIONS, json_default
 
 try:
     __version__ = version("edjas")
 except PackageNotFoundError:  # not installed (e.g. running from a source checkout)
     __version__ = "0.0.0+unknown"
 
-__all__ = ["read_file", "__version__"]
+__all__ = ["read_file", "DEFAULT_FUNCTIONS", "json_default", "__version__"]
 
 def main(argv=None):
     parser = argparse.ArgumentParser(
@@ -31,5 +32,5 @@ def main(argv=None):
         version=f"%(prog)s {__version__}",
     )
     args = parser.parse_args(argv)
-    json.dump(read_file(args.file, args.range), sys.stdout)
+    json.dump(read_file(args.file, args.range), sys.stdout, default=json_default)
     sys.stdout.write("\n")

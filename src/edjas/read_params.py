@@ -2,6 +2,22 @@ import sys
 
 import openpyxl
 
+from . import functions as _functions
+
+
+def parse_ref(inner):
+    """Split markup contents into an optional function token and a range ref.
+
+    ``"records Sales"`` -> ``("records", "Sales")``; ``"Sales"`` -> ``(None,
+    "Sales")``. Splitting on whitespace is unambiguous because Excel named ranges
+    and cell references (e.g. ``D3:E9``) never contain spaces.
+    """
+    parts = inner.split(None, 1)
+    if len(parts) == 2:
+        return parts[0], parts[1].strip()
+    return None, parts[0].strip()
+
+
 def extract_values(sheet, range_spec, flatten=True):
     result = []
     for row in sheet[range_spec]:
@@ -26,7 +42,16 @@ def range_values(wb, range_spec, flatten=True):
         cell_refs = range_spec
     return extract_values(sheet, cell_refs, flatten=flatten)
 
-def range_to_dict(workbook, range_spec):
+def _apply(func, value, registry):
+    """Apply the named function from ``registry`` to ``value`` (or pass through)."""
+    if func is None:
+        return value
+    return _functions.lookup(registry, func)(value)
+
+
+def range_to_dict(workbook, range_spec, registry=None):
+    if registry is None:
+        registry = _functions.resolve()
     # Get the rows in the given range
     rows = range_values(workbook, range_spec, flatten=False)
     if len(rows[0]) != 2:
@@ -44,14 +69,15 @@ def range_to_dict(workbook, range_spec):
         # Check if the value is a range name enclosed in braces: dictionary
         if type(value) is str:
             if value.startswith("{") and value.endswith("}"):
-                # Extract the named range name (e.g., "SubParameters" from "{SubParameters}")
-                ref_range_spec = value[1:-1]
-                # Recursively process the referenced named range
-                result[key] = range_to_dict(workbook, ref_range_spec)
-            # Otherwise "[range]" references a list or matrix.
+                # "{[f] name}": extract an object, optionally apply function f.
+                func, ref_range_spec = parse_ref(value[1:-1])
+                extracted = range_to_dict(workbook, ref_range_spec, registry)
+                result[key] = _apply(func, extracted, registry)
+            # Otherwise "[[f] name]" references a list or matrix.
             elif value.startswith("[") and value.endswith("]"):
-                ref_range_spec = value[1:-1]
-                result[key] = range_values(workbook, ref_range_spec)
+                func, ref_range_spec = parse_ref(value[1:-1])
+                extracted = range_values(workbook, ref_range_spec)
+                result[key] = _apply(func, extracted, registry)
             else:
                 result[key] = value
         else:
@@ -59,10 +85,11 @@ def range_to_dict(workbook, range_spec):
             result[key] = value
     return result
 
-def read_file(file_name, range_name="Parameters"):
+def read_file(file_name, range_name="Parameters", functions=None):
     # Load the Excel workbook
     workbook = openpyxl.load_workbook(file_name, data_only=False)
-    return range_to_dict(workbook, range_name)
+    registry = _functions.resolve(functions)
+    return range_to_dict(workbook, range_name, registry)
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:

@@ -19,33 +19,43 @@ World" playing softly in the background), EDJAS is intended to help people extra
 that locked-up data more effectively, in simple and easy-to-understand ways
 that don't affect existing workflows.
 
-It lets you add data specifications to any existing spreadsheet by creating
-named ranges in the spreadsheet. By default EDJAS will look for a range
-name `Parameters` as its starting point, although this can be overridden on the command line.
-This range should be precisely two columns wide, and EDJAS
-treats the left-hand column as names and the right-hand column as values.
-Normally, the values are used literally after extraction from the spreadsheet.
-Two formats for the value are given special treatment.
+EDJAS leaves your spreadsheet **completely untouched**. Instead of adding anything
+to the workbook, you write a small **specification file** — a TOML document —
+describing what to extract. One spec can serve many workbooks, and one workbook can
+have many specs, each tailored to a different audience.
 
-  - **`[range-name]`**: the named range is exported as a JSON list or, if  it's two-dimensional a list of row lists.
-  - **`{range_name}`**: The named range, which must be two columns wide, becomes a JSON object where the left-hand column specifies
-    the names and the right-hand column specifies the values.
+## The specification file
+
+A spec is a TOML file with an `[extract]` table mapping the output keys you want to
+the values to pull from the spreadsheet:
+
+```toml
+[extract]
+title  = "Summary!B2"                    # a single cell   -> scalar
+hours  = "{Hours}"                        # a 2-column range -> object
+prices = "{Prices | int}"                 # object, values coerced to int
+sales  = "[Sales | records]"              # a table -> list of objects
+people = "[Grid | transpose | records]"   # a pipeline of transforms
+```
+
+Each value is an **extraction expression**. There are three forms:
+
+  - **`ref`** (a plain reference) — the value of a single cell.
+  - **`[ref]`** — the range as a JSON list, or a list of row-lists if it is
+    two-dimensional.
+  - **`{ref}`** — a two-column range as a JSON object (left column names, right
+    column values).
+
+A `ref` is either a **named range** or an A1-style cell range (`D3:E9`), optionally
+qualified with a sheet name (`Summary!D3:E9`). Named ranges are recommended: they
+survive layout changes, whereas bare cell references do not.
 
 ## Transforming values with functions
 
-Inside either markup form you can append a **pipeline** of functions, separated by
-`|`, to transform the extracted value before it becomes JSON:
-
-```
-[range-name | f | g]      {range-name | f | g}
-```
-
-The range is extracted first, then each function is applied left to right — so
-`[Sales | records]` reads `Sales` as a table and turns it into a list of objects,
-and `[Grid | transpose | records]` transposes first, then builds the objects.
-
-Functions are resolved from a fixed, built-in registry — spreadsheets cannot run
-arbitrary code. The functions shipped by default are:
+Any expression may append a **pipeline** of functions, separated by `|`, applied left
+to right after extraction — so `[Grid | transpose | records]` transposes the range,
+then builds objects from it. Functions come from a fixed, built-in registry (no
+arbitrary code runs). The built-ins:
 
 | Function | Typical input | Result |
 |----------|---------------|--------|
@@ -55,39 +65,39 @@ arbitrary code. The functions shipped by default are:
 | `flatten` | `[table]` | flattens nested rows into a single list |
 | `keys` / `values` / `items` | `{object}` | the object's keys, values, or `[key, value]` pairs |
 | `invert` | `{object}` | swaps keys and values |
-| `int` / `float` / `str` | either | coerces every value to that type |
-| `round2` | either | rounds every floating-point value to two decimal places |
-| `isodate` | either | formats date/time values as ISO-8601 strings |
+| `int` / `float` / `str` | any | coerces every value to that type |
+| `round2` | any | rounds every floating-point value to two decimal places |
+| `isodate` | any | formats date/time values as ISO-8601 strings |
 
 ### Function arguments
 
 A function may take arguments after its name, separated by spaces. An argument is a
 **number** (`2`), a **double-quoted string** (`", "`), or a **bare word**, which is
-read as another named range. The piped value is always passed as the first argument,
-so `[Price | round 2]` is `round(Price, 2)`. (Grouping parentheses are reserved for a
-possible future extension and are not yet supported.)
+read as another range reference. The extracted value is always passed as the first
+argument, so `[Price | round 2]` means `round(Price, 2)`. (Grouping parentheses are
+reserved for a possible future extension and are not yet supported.)
 
-When using EDJAS as a library, `read_file(path, functions={...})` adds your own
-functions to (and can override) the built-ins. Custom functions receive the piped
-value first, followed by any arguments:
+## Usage
+
+From the command line — pass the spreadsheet and the spec; JSON goes to standard
+output:
+
+```
+edjas data.xlsx report.toml
+```
+
+As a library, `read_spec` returns the extracted data as a Python dict. Pass
+`functions={...}` to add your own functions to (or override) the built-ins; each
+receives the extracted value first, then any arguments:
 
 ```python
-from edjas import read_file
-read_file("data.xlsx", functions={"join": lambda v, sep: sep.join(v)})
-# ... lets a cell use:  [Tags | join ", "]
+from edjas import read_spec
+data = read_spec("data.xlsx", "report.toml",
+                 functions={"join": lambda v, sep: sep.join(v)})
+# ... lets the spec use:  tags = "[Tags | join \", \"]"
 ```
 
 Date and time cells are serialised as ISO-8601 strings automatically.
-
-The parameter details are used to extract data from the spreadsheet, which is then sent to standard output as JSON.
-
-![Parameter specifications in EDJAS](https://raw.githubusercontent.com/holdenweb/edjas/main/images/parameters.png "Parameter specifications in EDJAS")
-
-In the example shown, the `version` key has a dict value, and in that dict the `number` key has a value of "1.0.2".
-The version number can therefore be referenced in the JSON output as `version.number`. The output from this example is shown below.
-
-
-![Parameter data extracted from a spreadsheet](https://raw.githubusercontent.com/holdenweb/edjas/main/images/json.png "The parameter data")
 
 A demonstration of the system can be found at [https://github.com/holdenweb/edjas-demo](https://github.com/holdenweb/edjas-demo).
 

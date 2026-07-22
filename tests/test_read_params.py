@@ -6,18 +6,20 @@ import openpyxl
 import pytest
 from openpyxl.workbook.defined_name import DefinedName
 
-from edjas import json_default, read_file
+from edjas import json_default, read_spec
 from edjas.read_params import parse_pipeline
 
-FIXTURE = Path(__file__).parent / "data" / "parameters.xlsx"
+DATA = Path(__file__).parent / "data"
+FIXTURE_XLSX = DATA / "parameters.xlsx"
+FIXTURE_TOML = DATA / "parameters.toml"
 
 
 def make_workbook(tmp_path, cells, defined_names, extra_sheets=None):
-    """Build a workbook from {coord: value} on Sheet1 and {name: ref} names.
+    """Build a *data-only* workbook: {coord: value} on Sheet1, {name: ref} names.
 
-    ``extra_sheets`` optionally adds further sheets as {sheet_name: {coord: value}},
-    enabling cross-sheet references such as ``Data!D1:F2``. Defined names are
-    anchored to Sheet1.
+    Cells hold data, never EDJAS markup. ``extra_sheets`` optionally adds further
+    sheets as {sheet_name: {coord: value}} for cross-sheet references. Defined names
+    are anchored to Sheet1.
     """
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -30,18 +32,33 @@ def make_workbook(tmp_path, cells, defined_names, extra_sheets=None):
             sheet[coord] = value
     for name, ref in defined_names.items():
         wb.defined_names.add(DefinedName(name, attr_text=f"Sheet1!{ref}"))
-    path = tmp_path / "wb.xlsx"
+    path = tmp_path / "data.xlsx"
     wb.save(path)
     return path
 
 
+def make_spec(tmp_path, mapping, name="spec.toml"):
+    """Write an [extract] TOML spec from {key: expression}.
+
+    Expressions are emitted as TOML literal strings (single-quoted), so they may
+    contain the double quotes EDJAS uses for string arguments.
+    """
+    lines = ["[extract]"]
+    lines += [f"{key} = '{expr}'" for key, expr in mapping.items()]
+    path = tmp_path / name
+    path.write_text("\n".join(lines) + "\n")
+    return path
+
+
+# --- fixture (real data-only workbook + companion spec) ---------------------
+
 @pytest.fixture(scope="module")
 def params():
-    return read_file(FIXTURE)
+    return read_spec(FIXTURE_XLSX, FIXTURE_TOML)
 
 
 def test_scalar(params):
-    assert params["title"] == "Hubris Demo"
+    assert params["title"] == "EDJAS Demo"
 
 
 def test_named_range_dict_hours(params):
@@ -70,19 +87,6 @@ def test_vertical_vector(params):
 
 def test_expected_keys_present(params):
     assert set(params) >= {"title", "hours", "prices", "hours_list", "h_vector", "v_vector"}
-
-
-def test_single_entry_dict(tmp_path):
-    """A one-row {dict} range must read as a dict, not be flattened to a vector."""
-    path = make_workbook(
-        tmp_path,
-        {
-            "A1": "version", "B1": "{version}",
-            "A2": "number", "B2": "0.1.2",
-        },
-        {"Parameters": "$A$1:$B$1", "version": "$A$2:$B$2"},
-    )
-    assert read_file(path) == {"version": {"number": "0.1.2"}}
 
 
 # --- pipeline parser -------------------------------------------------------
@@ -127,280 +131,159 @@ def test_parse_pipeline_rejects_unterminated_string():
         parse_pipeline('Words | join "oops')
 
 
-# --- pipe-notation function markup -----------------------------------------
+# --- spec-driven extraction: the three forms --------------------------------
 
-def test_markup_records(tmp_path):
-    path = make_workbook(
+def test_scalar_extraction_active_sheet(tmp_path):
+    xlsx = make_workbook(tmp_path, {"B2": "hello"}, {})
+    spec = make_spec(tmp_path, {"greeting": "B2"})
+    assert read_spec(xlsx, spec) == {"greeting": "hello"}
+
+
+def test_scalar_extraction_named(tmp_path):
+    xlsx = make_workbook(tmp_path, {"B2": "hi"}, {"Greeting": "$B$2"})
+    spec = make_spec(tmp_path, {"g": "Greeting"})
+    assert read_spec(xlsx, spec) == {"g": "hi"}
+
+
+def test_object_extraction_with_pipeline(tmp_path):
+    xlsx = make_workbook(
+        tmp_path,
+        {"D1": "Tea", "E1": "3", "D2": "Coffee", "E2": "4"},
+        {"Prices": "$D$1:$E$2"},
+    )
+    spec = make_spec(tmp_path, {"prices": "{Prices | int}"})
+    assert read_spec(xlsx, spec) == {"prices": {"Tea": 3, "Coffee": 4}}
+
+
+def test_list_extraction_records(tmp_path):
+    xlsx = make_workbook(
         tmp_path,
         {
-            "A1": "sales", "B1": "[Sales | records]",
             "D1": "Region", "E1": "Q1",
             "D2": "North", "E2": 100,
             "D3": "South", "E3": 200,
         },
-        {"Parameters": "$A$1:$B$1", "Sales": "$D$1:$E$3"},
+        {"Sales": "$D$1:$E$3"},
     )
-    assert read_file(path) == {
-        "sales": [
-            {"Region": "North", "Q1": 100},
-            {"Region": "South", "Q1": 200},
-        ]
+    spec = make_spec(tmp_path, {"sales": "[Sales | records]"})
+    assert read_spec(xlsx, spec) == {
+        "sales": [{"Region": "North", "Q1": 100}, {"Region": "South", "Q1": 200}]
     }
 
 
-def test_markup_function_on_object(tmp_path):
-    """{Prices | int} coerces text-formatted values after building the object."""
-    path = make_workbook(
+def test_chained_pipeline(tmp_path):
+    xlsx = make_workbook(
         tmp_path,
         {
-            "A1": "prices", "B1": "{Prices | int}",
-            "D1": "Tea", "E1": "3",
-            "D2": "Coffee", "E2": "4",
-        },
-        {"Parameters": "$A$1:$B$1", "Prices": "$D$1:$E$2"},
-    )
-    assert read_file(path) == {"prices": {"Tea": 3, "Coffee": 4}}
-
-
-def test_markup_transpose(tmp_path):
-    path = make_workbook(
-        tmp_path,
-        {
-            "A1": "grid", "B1": "[Grid | transpose]",
-            "D1": 1, "E1": 2, "F1": 3,
-            "D2": 4, "E2": 5, "F2": 6,
-        },
-        {"Parameters": "$A$1:$B$1", "Grid": "$D$1:$F$2"},
-    )
-    assert read_file(path) == {"grid": [[1, 4], [2, 5], [3, 6]]}
-
-
-def test_markup_chained_pipeline(tmp_path):
-    """Stages apply left to right. Grid is field-per-row (column-oriented);
-    transpose turns fields into the header row, then records builds objects."""
-    path = make_workbook(
-        tmp_path,
-        {
-            "A1": "people", "B1": "[Grid | transpose | records]",
             "D1": "name", "E1": "alice", "F1": "bob",
             "D2": "age", "E2": 30, "F2": 25,
         },
-        {"Parameters": "$A$1:$B$1", "Grid": "$D$1:$F$2"},
+        {"Grid": "$D$1:$F$2"},
     )
-    assert read_file(path) == {
-        "people": [
-            {"name": "alice", "age": 30},
-            {"name": "bob", "age": 25},
-        ]
+    spec = make_spec(tmp_path, {"people": "[Grid | transpose | records]"})
+    assert read_spec(xlsx, spec) == {
+        "people": [{"name": "alice", "age": 30}, {"name": "bob", "age": 25}]
     }
 
 
-def test_markup_no_function_unchanged(tmp_path):
-    """A bare [name] with no pipeline still behaves as before."""
-    path = make_workbook(
-        tmp_path,
-        {
-            "A1": "vec", "B1": "[Vec]",
-            "D1": "a", "E1": "b", "F1": "c",
-        },
-        {"Parameters": "$A$1:$B$1", "Vec": "$D$1:$F$1"},
-    )
-    assert read_file(path) == {"vec": ["a", "b", "c"]}
+# --- spec-driven extraction: arguments --------------------------------------
 
-
-def test_markup_unknown_function_raises(tmp_path):
-    path = make_workbook(
-        tmp_path,
-        {
-            "A1": "vec", "B1": "[Vec | bogus]",
-            "D1": 1, "E1": 2,
-        },
-        {"Parameters": "$A$1:$B$1", "Vec": "$D$1:$E$1"},
-    )
-    with pytest.raises(ValueError, match="Unknown EDJAS function 'bogus'"):
-        read_file(path)
-
-
-def test_injected_custom_function(tmp_path):
-    path = make_workbook(
-        tmp_path,
-        {
-            "A1": "vec", "B1": "[Vec | double]",
-            "D1": 1, "E1": 2, "F1": 3,
-        },
-        {"Parameters": "$A$1:$B$1", "Vec": "$D$1:$F$1"},
-    )
-    out = read_file(path, functions={"double": lambda v: [x * 2 for x in v]})
-    assert out == {"vec": [2, 4, 6]}
-
-
-def test_injected_function_with_numeric_arg(tmp_path):
-    """A bare number argument is passed as an int/float literal."""
-    path = make_workbook(
-        tmp_path,
-        {
-            "A1": "vec", "B1": "[Vec | scale 10]",
-            "D1": 1, "E1": 2, "F1": 3,
-        },
-        {"Parameters": "$A$1:$B$1", "Vec": "$D$1:$F$1"},
-    )
-    out = read_file(path, functions={"scale": lambda v, n: [x * n for x in v]})
+def test_numeric_argument(tmp_path):
+    xlsx = make_workbook(tmp_path, {"D1": 1, "E1": 2, "F1": 3}, {"Vec": "$D$1:$F$1"})
+    spec = make_spec(tmp_path, {"vec": "[Vec | scale 10]"})
+    out = read_spec(xlsx, spec, functions={"scale": lambda v, n: [x * n for x in v]})
     assert out == {"vec": [10, 20, 30]}
 
 
-def test_injected_function_with_range_reference_arg(tmp_path):
-    """A bare-word argument is resolved as a named range and passed in."""
-    path = make_workbook(
-        tmp_path,
-        {
-            "A1": "totals", "B1": "[Vec | add Other]",
-            "D1": 1, "E1": 2, "F1": 3,
-            "D2": 10, "E2": 20, "F2": 30,
-        },
-        {
-            "Parameters": "$A$1:$B$1",
-            "Vec": "$D$1:$F$1",
-            "Other": "$D$2:$F$2",
-        },
+def test_quoted_argument(tmp_path):
+    xlsx = make_workbook(
+        tmp_path, {"D1": "the", "E1": "quick", "F1": "brown"}, {"Words": "$D$1:$F$1"}
     )
-    out = read_file(
-        path,
-        functions={"add": lambda v, other: [a + b for a, b in zip(v, other)]},
-    )
-    assert out == {"totals": [11, 22, 33]}
-
-
-def test_injected_function_with_quoted_arg(tmp_path):
-    """A double-quoted argument is passed as a string literal (spaces kept)."""
-    path = make_workbook(
-        tmp_path,
-        {
-            "A1": "csv", "B1": '[Words | join ", "]',
-            "D1": "the", "E1": "quick", "F1": "brown",
-        },
-        {"Parameters": "$A$1:$B$1", "Words": "$D$1:$F$1"},
-    )
-    out = read_file(path, functions={"join": lambda v, sep: sep.join(v)})
+    spec = make_spec(tmp_path, {"csv": '[Words | join ", "]'})
+    out = read_spec(xlsx, spec, functions={"join": lambda v, sep: sep.join(v)})
     assert out == {"csv": "the, quick, brown"}
 
 
-# --- raw A1-style range specifications (not named ranges) ------------------
-
-def test_raw_range_bare_source(tmp_path):
-    """A bare [A1:B2] cell range works without a defined name."""
-    path = make_workbook(
+def test_reference_argument(tmp_path):
+    xlsx = make_workbook(
         tmp_path,
-        {
-            "A1": "vec", "B1": "[D1:F1]",
-            "D1": "a", "E1": "b", "F1": "c",
-        },
-        {"Parameters": "$A$1:$B$1"},
+        {"D1": 1, "E1": 2, "F1": 3, "D2": 10, "E2": 20, "F2": 30},
+        {"Vec": "$D$1:$F$1", "Other": "$D$2:$F$2"},
     )
-    assert read_file(path) == {"vec": ["a", "b", "c"]}
-
-
-def test_raw_range_list_source_with_function(tmp_path):
-    """A raw range may be the source of a pipeline: [D1:F2 | transpose]."""
-    path = make_workbook(
-        tmp_path,
-        {
-            "A1": "grid", "B1": "[D1:F2 | transpose]",
-            "D1": 1, "E1": 2, "F1": 3,
-            "D2": 4, "E2": 5, "F2": 6,
-        },
-        {"Parameters": "$A$1:$B$1"},
-    )
-    assert read_file(path) == {"grid": [[1, 4], [2, 5], [3, 6]]}
-
-
-def test_raw_range_object_source_with_function(tmp_path):
-    """A raw two-column range works as a {object} source: {D1:E2 | int}."""
-    path = make_workbook(
-        tmp_path,
-        {
-            "A1": "prices", "B1": "{D1:E2 | int}",
-            "D1": "Tea", "E1": "3",
-            "D2": "Coffee", "E2": "4",
-        },
-        {"Parameters": "$A$1:$B$1"},
-    )
-    assert read_file(path) == {"prices": {"Tea": 3, "Coffee": 4}}
-
-
-def test_raw_range_as_reference_argument(tmp_path):
-    """A raw range may be a reference argument: [D1:F1 | add D2:F2]."""
-    path = make_workbook(
-        tmp_path,
-        {
-            "A1": "totals", "B1": "[D1:F1 | add D2:F2]",
-            "D1": 1, "E1": 2, "F1": 3,
-            "D2": 10, "E2": 20, "F2": 30,
-        },
-        {"Parameters": "$A$1:$B$1"},
-    )
-    out = read_file(
-        path,
-        functions={"add": lambda v, other: [a + b for a, b in zip(v, other)]},
+    spec = make_spec(tmp_path, {"totals": "[Vec | add Other]"})
+    out = read_spec(
+        xlsx, spec, functions={"add": lambda v, other: [a + b for a, b in zip(v, other)]}
     )
     assert out == {"totals": [11, 22, 33]}
 
 
-# --- cross-sheet raw range specifications (Sheet!A1:B4) ---------------------
+# --- spec-driven extraction: reference styles -------------------------------
 
-def test_cross_sheet_raw_range_list_source(tmp_path):
-    """A raw range qualified by another sheet name works as a source."""
-    path = make_workbook(
+def test_raw_range_source(tmp_path):
+    xlsx = make_workbook(
         tmp_path,
-        {"A1": "grid", "B1": "[Data!D1:F2 | transpose]"},
-        {"Parameters": "$A$1:$B$1"},
+        {"D1": 1, "E1": 2, "F1": 3, "D2": 4, "E2": 5, "F2": 6},
+        {},
+    )
+    spec = make_spec(tmp_path, {"grid": "[D1:F2 | transpose]"})
+    assert read_spec(xlsx, spec) == {"grid": [[1, 4], [2, 5], [3, 6]]}
+
+
+def test_cross_sheet_raw_range_source(tmp_path):
+    xlsx = make_workbook(
+        tmp_path,
+        {},
+        {},
         extra_sheets={"Data": {
             "D1": 1, "E1": 2, "F1": 3,
             "D2": 4, "E2": 5, "F2": 6,
         }},
     )
-    assert read_file(path) == {"grid": [[1, 4], [2, 5], [3, 6]]}
+    spec = make_spec(tmp_path, {"grid": "[Data!D1:F2 | transpose]"})
+    assert read_spec(xlsx, spec) == {"grid": [[1, 4], [2, 5], [3, 6]]}
 
 
-def test_cross_sheet_raw_range_object_source(tmp_path):
-    """A cross-sheet two-column raw range works as a {object} source."""
-    path = make_workbook(
+def test_cross_sheet_reference_argument(tmp_path):
+    xlsx = make_workbook(
         tmp_path,
-        {"A1": "prices", "B1": "{Data!D1:E2 | int}"},
-        {"Parameters": "$A$1:$B$1"},
-        extra_sheets={"Data": {
-            "D1": "Tea", "E1": "3",
-            "D2": "Coffee", "E2": "4",
-        }},
-    )
-    assert read_file(path) == {"prices": {"Tea": 3, "Coffee": 4}}
-
-
-def test_cross_sheet_raw_range_as_reference_argument(tmp_path):
-    """A cross-sheet raw range works as a reference argument."""
-    path = make_workbook(
-        tmp_path,
-        {
-            "A1": "totals", "B1": "[D1:F1 | add Data!D1:F1]",
-            "D1": 1, "E1": 2, "F1": 3,
-        },
-        {"Parameters": "$A$1:$B$1"},
+        {"D1": 1, "E1": 2, "F1": 3},
+        {},
         extra_sheets={"Data": {"D1": 10, "E1": 20, "F1": 30}},
     )
-    out = read_file(
-        path,
-        functions={"add": lambda v, other: [a + b for a, b in zip(v, other)]},
+    spec = make_spec(tmp_path, {"totals": "[D1:F1 | add Data!D1:F1]"})
+    out = read_spec(
+        xlsx, spec, functions={"add": lambda v, other: [a + b for a, b in zip(v, other)]}
     )
     assert out == {"totals": [11, 22, 33]}
+
+
+# --- errors and serialization ----------------------------------------------
+
+def test_unknown_function_raises(tmp_path):
+    xlsx = make_workbook(tmp_path, {"D1": 1, "E1": 2}, {"Vec": "$D$1:$E$1"})
+    spec = make_spec(tmp_path, {"v": "[Vec | bogus]"})
+    with pytest.raises(ValueError, match="Unknown EDJAS function 'bogus'"):
+        read_spec(xlsx, spec)
+
+
+def test_spec_without_extract_table_raises(tmp_path):
+    xlsx = make_workbook(tmp_path, {"A1": "x"}, {})
+    bad = tmp_path / "bad.toml"
+    bad.write_text("[other]\nfoo = 'bar'\n")
+    with pytest.raises(ValueError, match=r"must contain an \[extract\] table"):
+        read_spec(xlsx, bad)
+
+
+def test_scalar_pipeline_isodate(tmp_path):
+    xlsx = make_workbook(tmp_path, {"B2": datetime(2026, 6, 29, 9, 30)}, {})
+    spec = make_spec(tmp_path, {"opened": "B2 | isodate"})
+    assert read_spec(xlsx, spec) == {"opened": "2026-06-29T09:30:00"}
 
 
 def test_date_cell_serialises(tmp_path):
-    """A date cell reads as a datetime and serialises via json_default."""
-    path = make_workbook(
-        tmp_path,
-        {"A1": "opened", "B1": datetime(2026, 6, 29, 9, 30)},
-        {"Parameters": "$A$1:$B$1"},
-    )
-    data = read_file(path)
+    xlsx = make_workbook(tmp_path, {"B2": datetime(2026, 6, 29, 9, 30)}, {})
+    spec = make_spec(tmp_path, {"opened": "B2"})
+    data = read_spec(xlsx, spec)
     assert data["opened"] == datetime(2026, 6, 29, 9, 30)
     assert json.loads(json.dumps(data, default=json_default)) == {
         "opened": "2026-06-29T09:30:00"

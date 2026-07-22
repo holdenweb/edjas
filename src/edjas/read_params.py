@@ -1,7 +1,3 @@
-import sys
-
-import openpyxl
-
 from . import functions as _functions
 
 
@@ -92,7 +88,12 @@ def extract_values(sheet, range_spec, flatten=True):
     else:
         return result
 
-def range_values(wb, range_spec, flatten=True):
+def _resolve_sheet_and_refs(wb, range_spec):
+    """Resolve a named range or A1-style spec to ``(sheet, cell_refs)``.
+
+    A defined name is expanded to its ``Sheet!refs`` text; an explicit ``!`` selects
+    that sheet; otherwise the active sheet is used.
+    """
     if range_spec in wb.defined_names:
         range_spec = wb.defined_names[range_spec].attr_text
     if "!" in range_spec:
@@ -101,7 +102,21 @@ def range_values(wb, range_spec, flatten=True):
     else:
         sheet = wb.active
         cell_refs = range_spec
+    return sheet, cell_refs
+
+
+def range_values(wb, range_spec, flatten=True):
+    sheet, cell_refs = _resolve_sheet_and_refs(wb, range_spec)
     return extract_values(sheet, cell_refs, flatten=flatten)
+
+
+def read_scalar(wb, range_spec):
+    """Return the value of a single referenced cell (top-left if a range is given)."""
+    sheet, cell_refs = _resolve_sheet_and_refs(wb, range_spec)
+    target = sheet[cell_refs]
+    if isinstance(target, tuple):  # a multi-cell range -> take the top-left cell
+        return target[0][0].value
+    return target.value  # a lone cell reference is a single Cell
 
 def _resolve_arg(workbook, text, is_string):
     """Resolve a stage argument: quoted -> string, numeric -> number, else a range."""
@@ -128,52 +143,38 @@ def apply_pipeline(workbook, registry, value, stages):
     return value
 
 
-def range_to_dict(workbook, range_spec, registry=None):
-    if registry is None:
-        registry = _functions.resolve()
-    # Get the rows in the given range
+def range_to_dict(workbook, range_spec):
+    """Read a two-column range into an object: column 0 keys, column 1 values.
+
+    Blank rows are skipped; a value with no key is an error.
+    """
     rows = range_values(workbook, range_spec, flatten=False)
     if len(rows[0]) != 2:
         raise ValueError(f"Range spec {range_spec} should have two columns")
-    # Initialize the result dictionary
     result = {}
     for key, value in rows:
-        # Skip empty rows, but complain about floating values
         if key is None:
             if value is None:
                 continue
-            else:
-                raise ValueError("Empty key not expected on value {value!r} - programming error?")
-        # Check if the value is a range name enclosed in braces: dictionary
-        if type(value) is str:
-            if value.startswith("{") and value.endswith("}"):
-                # "{name | f ... }": extract an object, then apply the pipeline.
-                source_ref, stages = parse_pipeline(value[1:-1])
-                extracted = range_to_dict(workbook, source_ref, registry)
-                result[key] = apply_pipeline(workbook, registry, extracted, stages)
-            # "[name | f ... ]" extracts a list/matrix, then applies the pipeline.
-            elif value.startswith("[") and value.endswith("]"):
-                source_ref, stages = parse_pipeline(value[1:-1])
-                extracted = range_values(workbook, source_ref)
-                result[key] = apply_pipeline(workbook, registry, extracted, stages)
-            else:
-                result[key] = value
-        else:
-            # Single value
-            result[key] = value
+            raise ValueError(f"Value {value!r} in {range_spec} has no key")
+        result[key] = value
     return result
 
-def read_file(file_name, range_name="Parameters", functions=None):
-    # Load the Excel workbook
-    workbook = openpyxl.load_workbook(file_name, data_only=False)
-    registry = _functions.resolve(functions)
-    return range_to_dict(workbook, range_name, registry)
 
-if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        sys.exit("Requires spreadsheet arguments")
-    if len(sys.argv) > 3:
-        sys.exit("Sorry, only handling one or two arguments for now")
-    from pprint import pprint
-    data = read_file(*sys.argv[1:])
-    pprint(data)
+def evaluate(workbook, expr, registry):
+    """Evaluate one spec expression against the workbook.
+
+    ``[ref | ...]`` extracts a list/table, ``{ref | ...}`` an object, and a bare
+    ``ref`` a scalar. Any trailing ``| func`` stages are then applied.
+    """
+    expr = expr.strip()
+    if expr.startswith("[") and expr.endswith("]"):
+        source_ref, stages = parse_pipeline(expr[1:-1])
+        value = range_values(workbook, source_ref)
+    elif expr.startswith("{") and expr.endswith("}"):
+        source_ref, stages = parse_pipeline(expr[1:-1])
+        value = range_to_dict(workbook, source_ref)
+    else:
+        source_ref, stages = parse_pipeline(expr)
+        value = read_scalar(workbook, source_ref)
+    return apply_pipeline(workbook, registry, value, stages)

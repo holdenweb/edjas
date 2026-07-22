@@ -1,12 +1,9 @@
-"""Regenerate the test fixture used by the EDJAS test suite.
+"""Regenerate the test fixtures used by the EDJAS test suite.
 
-Running this script rewrites ``tests/data/parameters.xlsx`` with the exact
-layout that ``tests/test_read_params.py`` asserts against:
-
-  * a two-column ``Parameters`` range whose values exercise scalars, ``{dict}``
-    references, ``[range]`` references, and direct cell-range references;
-  * a ``hours`` named range (a 7-row day/opening-hours table);
-  * a ``prices`` named range living on a second ``SubParameters`` sheet.
+Writes a **data-only** workbook (``tests/data/parameters.xlsx``) — the spreadsheet
+EDJAS reads but never modifies — together with a companion extraction spec
+(``tests/data/parameters.toml``). The workbook carries no EDJAS markup; all
+extraction instructions live in the spec.
 
 Run from the project root:  ``python scripts/create_fixtures.py``
 """
@@ -16,7 +13,9 @@ from pathlib import Path
 from openpyxl import Workbook
 from openpyxl.workbook.defined_name import DefinedName
 
-FIXTURE = Path(__file__).resolve().parent.parent / "tests" / "data" / "parameters.xlsx"
+DATA = Path(__file__).resolve().parent.parent / "tests" / "data"
+XLSX = DATA / "parameters.xlsx"
+TOML = DATA / "parameters.toml"
 
 HOURS = [
     ("Monday", "7:00 am - 8:00 pm"),
@@ -27,51 +26,59 @@ HOURS = [
     ("Saturday", "9:00 am - 5:00 pm"),
     ("Sunday", "Closed"),
 ]
+PRICES = [("Tea", 3.25), ("Coffee", 4.0), ("Bacon Sandwich", 8.25)]
 H_VECTOR = ["the", "quick", "brown", "fox"]
 V_VECTOR = ["jumps", "over", "the", "lazy", "dog"]
-PRICES = [("Tea", 3.25), ("Coffee", 4.0), ("Bacon Sandwich", 8.25)]
+
+SPEC = """\
+# EDJAS extraction spec for parameters.xlsx
+[extract]
+title = "Title"
+hours = "{Hours}"
+prices = "{Prices}"
+hours_list = "[Hours]"
+h_vector = "[HVector]"
+v_vector = "[VVector]"
+"""
 
 
-def build():
+def build_workbook():
     wb = Workbook()
+    ws = wb.active
+    ws.title = "Data"
 
-    params = wb.active
-    params.title = "Parameters"
+    ws["A1"] = "EDJAS Demo"  # scalar title
 
-    # Column A/B: the parameter specifications EDJAS reads.
-    params["A3"], params["B3"] = "hours", "{hours}"
-    params["A4"], params["B4"] = "prices", "{prices}"
-    params["A5"], params["B5"] = "title", "Hubris Demo"
-    params["A6"], params["B6"] = "hours_list", "[D3:E9]"
-    params["A7"], params["B7"] = "h_vector", "[H5:K5]"
-    params["A8"], params["B8"] = "v_vector", "[H3:H7]"
+    for offset, (day, opening) in enumerate(HOURS):  # Hours table -> C1:D7
+        ws.cell(row=1 + offset, column=3, value=day)
+        ws.cell(row=1 + offset, column=4, value=opening)
 
-    # Columns D/E: the hours table, referenced by {hours} and [D3:E9].
-    for offset, (day, opening) in enumerate(HOURS):
-        params.cell(row=3 + offset, column=4, value=day)
-        params.cell(row=3 + offset, column=5, value=opening)
+    for offset, (item, price) in enumerate(PRICES):  # Prices table -> F1:G3
+        ws.cell(row=1 + offset, column=6, value=item)
+        ws.cell(row=1 + offset, column=7, value=price)
 
-    # Column H rows 3-7: the vertical vector, referenced by [H3:H7].
-    for offset, word in enumerate(V_VECTOR):
-        params.cell(row=3 + offset, column=8, value=word)
+    for offset, word in enumerate(H_VECTOR):  # horizontal vector -> I1:L1
+        ws.cell(row=1, column=9 + offset, value=word)
 
-    # Row 5 columns H-K: the horizontal vector, referenced by [H5:K5].
-    for offset, word in enumerate(H_VECTOR):
-        params.cell(row=5, column=8 + offset, value=word)
+    for offset, word in enumerate(V_VECTOR):  # vertical vector -> I3:I7
+        ws.cell(row=3 + offset, column=9, value=word)
 
-    sub = wb.create_sheet("SubParameters")
-    for offset, (item, price) in enumerate(PRICES):
-        sub.cell(row=1 + offset, column=1, value=item)
-        sub.cell(row=1 + offset, column=2, value=price)
+    wb.defined_names.add(DefinedName("Title", attr_text="Data!$A$1"))
+    wb.defined_names.add(DefinedName("Hours", attr_text="Data!$C$1:$D$7"))
+    wb.defined_names.add(DefinedName("Prices", attr_text="Data!$F$1:$G$3"))
+    wb.defined_names.add(DefinedName("HVector", attr_text="Data!$I$1:$L$1"))
+    wb.defined_names.add(DefinedName("VVector", attr_text="Data!$I$3:$I$7"))
 
-    wb.defined_names.add(DefinedName("Parameters", attr_text="Parameters!$A$1:$B$15"))
-    wb.defined_names.add(DefinedName("hours", attr_text="Parameters!$D$3:$E$9"))
-    wb.defined_names.add(DefinedName("prices", attr_text="SubParameters!$A$1:$B$3"))
+    DATA.mkdir(parents=True, exist_ok=True)
+    wb.save(XLSX)
+    print(f"Wrote workbook: {XLSX}")
 
-    FIXTURE.parent.mkdir(parents=True, exist_ok=True)
-    wb.save(FIXTURE)
-    print(f"Wrote fixture: {FIXTURE}")
+
+def build_spec():
+    TOML.write_text(SPEC)
+    print(f"Wrote spec: {TOML}")
 
 
 if __name__ == "__main__":
-    build()
+    build_workbook()
+    build_spec()

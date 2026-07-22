@@ -1,0 +1,8 @@
+# EDJAS extraction spec for parameters.xlsx
+[extract]
+title = "Title"
+hours = "{Hours}"
+prices = "{Prices}"
+hours_list = "[Hours]"
+h_vector = "[HVector]"
+v_vector = "[VVector]"

@@ -31,22 +31,24 @@ Two formats for the value are given special treatment.
   - **`{range_name}`**: The named range, which must be two columns wide, becomes a JSON object where the left-hand column specifies
     the names and the right-hand column specifies the values.
 
-## Applying functions
+## Transforming values with functions
 
-Either markup form may name a function to transform the extracted value:
-`[f name]` yields the result of applying `f` to the value `[name]` would produce,
-and `{f name}` yields `f` applied to the value `{name}` would produce. The
-function name and the range name are separated by a space (Excel range names
-never contain spaces, so this is unambiguous).
+Inside either markup form you can append a **pipeline** of functions, separated by
+`|`, to transform the extracted value before it becomes JSON:
 
-For example, if `Sales` is a table whose first row holds column headings,
-`[records Sales]` turns it into a list of JSON objects — one per data row.
+```
+[range-name | f | g]      {range-name | f | g}
+```
+
+The range is extracted first, then each function is applied left to right — so
+`[Sales | records]` reads `Sales` as a table and turns it into a list of objects,
+and `[Grid | transpose | records]` transposes first, then builds the objects.
 
 Functions are resolved from a fixed, built-in registry — spreadsheets cannot run
 arbitrary code. The functions shipped by default are:
 
-| Function | Applied to | Result |
-|----------|------------|--------|
+| Function | Typical input | Result |
+|----------|---------------|--------|
 | `records` | `[table]` | first row is headings; remaining rows become a list of objects |
 | `columns` | `[table]` | first row is headings; columns become a `{heading: [values]}` object |
 | `transpose` | `[table]` | swaps rows and columns |
@@ -57,12 +59,22 @@ arbitrary code. The functions shipped by default are:
 | `round2` | either | rounds every floating-point value to two decimal places |
 | `isodate` | either | formats date/time values as ISO-8601 strings |
 
+### Function arguments
+
+A function may take arguments after its name, separated by spaces. An argument is a
+**number** (`2`), a **double-quoted string** (`", "`), or a **bare word**, which is
+read as another named range. The piped value is always passed as the first argument,
+so `[Price | round 2]` is `round(Price, 2)`. (Grouping parentheses are reserved for a
+possible future extension and are not yet supported.)
+
 When using EDJAS as a library, `read_file(path, functions={...})` adds your own
-functions to (and can override) the built-ins:
+functions to (and can override) the built-ins. Custom functions receive the piped
+value first, followed by any arguments:
 
 ```python
 from edjas import read_file
-read_file("data.xlsx", functions={"upper": lambda v: [s.upper() for s in v]})
+read_file("data.xlsx", functions={"join": lambda v, sep: sep.join(v)})
+# ... lets a cell use:  [Tags | join ", "]
 ```
 
 Date and time cells are serialised as ISO-8601 strings automatically.

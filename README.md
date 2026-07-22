@@ -99,6 +99,25 @@ data = read_spec("data.xlsx", "report.toml",
 
 Date and time cells are serialised as ISO-8601 strings automatically.
 
+## Architecture
+
+Four diagrams describe how EDJAS is put together, zooming in a level at a time.
+Each is a self-contained SVG that can be viewed in the browser or downloaded from
+the `images/` directory.
+
+  - [**C4 system context**](https://github.com/holdenweb/edjas/blob/main/images/c4-context.svg)
+    — the setting: the spreadsheet maintainer who carries on as before, the analyst
+    who authors specs, and the systems the extracted JSON feeds.
+  - [**C4 container diagram**](https://github.com/holdenweb/edjas/blob/main/images/c4-container.svg)
+    — one level in: the command-line and library containers, the files they read,
+    and where the JSON ends up.
+  - [**C4 component diagram**](https://github.com/holdenweb/edjas/blob/main/images/c4-component.svg)
+    — inside the library: the spec loader, expression evaluator, pipeline parser,
+    workbook reader, pipeline executor and function registry, and the calls between them.
+  - [**Internal structure**](https://github.com/holdenweb/edjas/blob/main/images/internal-structure.svg)
+    — down at the code: the modules that make up the package, and how a single
+    extraction run flows through them from the spec and workbook to standard output.
+
 A demonstration of the system can be found at [https://github.com/holdenweb/edjas-demo](https://github.com/holdenweb/edjas-demo).
 
 This is particularly useful for audiences that have an interest in only a

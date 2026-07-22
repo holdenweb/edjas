@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="940" viewBox="0 0 1120 940" role="img" aria-label="C4 component diagram for the EDJAS library">
+  <title>EDJAS — C4 Component Diagram</title>
+  <desc>Level 3 C4 diagram zooming into the EDJAS library container: the spec loader, extraction orchestrator, expression evaluator, pipeline parser, workbook reader, pipeline executor, function registry and JSON encoder, and how a request flows between them.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8c959f"/>
+    </marker>
+    <style>
+      text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+      .title { font-size: 22px; font-weight: 700; fill: #1f2328; }
+      .subtitle { font-size: 13px; fill: #656d76; }
+      .comp { fill: #438dd5; }
+      .container { fill: #1168bd; }
+      .store { fill: #6ba7dd; }
+      .ext { fill: #8b949e; }
+      .boundary { fill: none; stroke: #6b7681; stroke-width: 1.6; stroke-dasharray: 7 5; }
+      .bname { fill: #57606a; font-size: 12px; font-weight: 600; }
+      .hdr { fill: #ffffff; font-size: 14px; font-weight: 700; }
+      .tag { fill: #e2eefa; font-size: 10.5px; }
+      .tag-e { fill: #eaeef2; font-size: 10.5px; }
+      .desc { fill: #f0f6fc; font-size: 11.5px; }
+      .desc-e { fill: #f4f6f8; font-size: 11.5px; }
+      .edge { stroke: #8c959f; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .edge-d { stroke-dasharray: 5 4; }
+      .elabel { fill: #57606a; font-size: 10.5px; }
+      .note { fill: #656d76; font-size: 11px; }
+    </style>
+  </defs>
+
+  <rect width="1120" height="940" fill="#ffffff"/>
+  <text class="title" x="40" y="44">EDJAS — C4 Component Diagram</text>
+  <text class="subtitle" x="40" y="66">Level 3: inside the EDJAS library container</text>
+
+  <!-- externals across the top -->
+  <rect class="store" x="60" y="90" width="210" height="92" rx="8"/>
+  <text class="hdr" x="76" y="120">Extraction spec</text>
+  <text class="tag" x="76" y="140">[File: TOML]</text>
+  <text class="desc" x="76" y="162">Names what to extract</text>
+
+  <rect class="container" x="430" y="90" width="270" height="92" rx="8"/>
+  <text class="hdr" x="446" y="120">edjas CLI</text>
+  <text class="tag" x="446" y="140">[Container]</text>
+  <text class="desc" x="446" y="162">Parses arguments, writes JSON</text>
+
+  <rect class="store" x="850" y="90" width="210" height="92" rx="8"/>
+  <text class="hdr" x="866" y="120">Workbook</text>
+  <text class="tag" x="866" y="140">[File: .xlsx]</text>
+  <text class="desc" x="866" y="162">Read-only</text>
+
+  <!-- container boundary -->
+  <rect class="boundary" x="40" y="225" width="1040" height="560" rx="12"/>
+  <text class="bname" x="52" y="250">EDJAS library   [Container: Python package]</text>
+
+  <!-- row 1 -->
+  <rect class="comp" x="90" y="278" width="270" height="118" rx="8"/>
+  <text class="hdr" x="106" y="306">Spec Loader</text>
+  <text class="tag" x="106" y="326">[Component: spec.load_spec]</text>
+  <text class="desc" x="106" y="348">Parses the TOML file and</text>
+  <text class="desc" x="106" y="366">requires an [extract] table</text>
+
+  <rect class="comp" x="430" y="278" width="270" height="118" rx="8"/>
+  <text class="hdr" x="446" y="306">Extraction Orchestrator</text>
+  <text class="tag" x="446" y="326">[Component: spec.read_spec]</text>
+  <text class="desc" x="446" y="348">Opens the workbook, resolves</text>
+  <text class="desc" x="446" y="366">the registry, evaluates each key</text>
+
+  <rect class="comp" x="790" y="278" width="250" height="118" rx="8"/>
+  <text class="hdr" x="806" y="306">JSON Encoder</text>
+  <text class="tag" x="806" y="326">[Component: functions]</text>
+  <text class="desc" x="806" y="348">json_default(): date and</text>
+  <text class="desc" x="806" y="366">time values → ISO-8601</text>
+
+  <!-- row 2 -->
+  <rect class="comp" x="430" y="440" width="270" height="118" rx="8"/>
+  <text class="hdr" x="446" y="468">Expression Evaluator</text>
+  <text class="tag" x="446" y="488">[Component: read_params.evaluate]</text>
+  <text class="desc" x="446" y="510">bare ref → scalar,  [ref] → list,</text>
+  <text class="desc" x="446" y="528">{ref} → object</text>
+
+  <rect class="comp" x="790" y="440" width="250" height="118" rx="8"/>
+  <text class="hdr" x="806" y="468">Pipeline Parser</text>
+  <text class="tag" x="806" y="488">[Component: parse_pipeline]</text>
+  <text class="desc" x="806" y="510">Quote-aware tokeniser for</text>
+  <text class="desc" x="806" y="528">source | func args | ...</text>
+
+  <!-- row 3 -->
+  <rect class="comp" x="90" y="608" width="270" height="140" rx="8"/>
+  <text class="hdr" x="106" y="636">Workbook Reader</text>
+  <text class="tag" x="106" y="656">[Component: read_params]</text>
+  <text class="desc" x="106" y="678">read_scalar · range_values</text>
+  <text class="desc" x="106" y="696">range_to_dict · extract_values</text>
+  <text class="desc" x="106" y="718">Resolves named, A1 and</text>
+  <text class="desc" x="106" y="736">cross-sheet references</text>
+
+  <rect class="comp" x="430" y="608" width="270" height="140" rx="8"/>
+  <text class="hdr" x="446" y="636">Pipeline Executor</text>
+  <text class="tag" x="446" y="656">[Component: apply_pipeline]</text>
+  <text class="desc" x="446" y="678">Runs each stage left to right;</text>
+  <text class="desc" x="446" y="696">_resolve_arg turns arguments</text>
+  <text class="desc" x="446" y="718">into numbers, strings or the</text>
+  <text class="desc" x="446" y="736">values of a referenced range</text>
+
+  <rect class="comp" x="790" y="608" width="250" height="140" rx="8"/>
+  <text class="hdr" x="806" y="636">Function Registry</text>
+  <text class="tag" x="806" y="656">[Component: functions]</text>
+  <text class="desc" x="806" y="678">DEFAULT_FUNCTIONS plus</text>
+  <text class="desc" x="806" y="696">any injected via functions=</text>
+  <text class="desc" x="806" y="718">Name lookup only —</text>
+  <text class="desc" x="806" y="736">never eval</text>
+
+  <!-- openpyxl outside the boundary -->
+  <rect class="ext" x="90" y="812" width="270" height="72" rx="8"/>
+  <text class="hdr" x="106" y="840">openpyxl</text>
+  <text class="tag-e" x="106" y="860">[External library]</text>
+
+  <!-- edges -->
+  <path class="edge" d="M565,182 L565,274"/>
+  <text class="elabel" x="577" y="234">read_spec(xlsx, spec)</text>
+
+  <path class="edge" d="M165,182 L188,274"/>
+  <text class="elabel" x="198" y="214">tomllib.load</text>
+
+  <path class="edge" d="M428,320 L364,320"/>
+  <text class="elabel" x="396" y="312" text-anchor="middle">load_spec()</text>
+
+  <path class="edge" d="M848,146 C762,152 720,240 704,296"/>
+  <text class="elabel" x="770" y="212" text-anchor="middle">openpyxl.load_workbook</text>
+
+  <path class="edge" d="M565,396 L565,436"/>
+  <text class="elabel" x="577" y="422">evaluate(expr)</text>
+
+  <path class="edge" d="M700,485 L786,485"/>
+  <text class="elabel" x="743" y="477" text-anchor="middle">parse_pipeline()</text>
+
+  <path class="edge" d="M428,522 C372,542 322,572 300,604"/>
+  <text class="elabel" x="392" y="576" text-anchor="end">extract scalar · list · object</text>
+
+  <path class="edge" d="M565,558 L565,604"/>
+  <text class="elabel" x="577" y="586">apply_pipeline()</text>
+
+  <path class="edge" d="M700,678 L786,678"/>
+  <text class="elabel" x="743" y="670" text-anchor="middle">lookup(name)</text>
+
+  <path class="edge" d="M428,700 L364,700"/>
+  <text class="elabel" x="396" y="716" text-anchor="middle">_resolve_arg</text>
+
+  <path class="edge" d="M225,748 L225,808"/>
+  <text class="elabel" x="237" y="784">cell access</text>
+
+  <path class="edge edge-d" d="M915,274 C915,232 800,216 706,180"/>
+  <text class="elabel" x="790" y="248" text-anchor="middle">json_default()</text>
+
+  <!-- notes -->
+  <text class="note" x="40" y="912">Blue = the CLI container · light blue = components inside the library and the files it reads · grey = external dependency. The dashed edge shows the CLI borrowing json_default for serialisation.</text>
+</svg>

@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1040px" height="900px" viewBox="0 0 1040 900" role="img" aria-label="EDJAS internal structure: modules and the flow of one extraction run" xmlns:bx="https://boxy-svg.com">
+  <title>EDJAS — Internal Structure</title>
+  <desc>Module responsibilities in the edjas package and how a single extraction run flows from the spec and workbook files through spec.py and read_params.py to JSON on standard output.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8c959f"/>
+    </marker>
+    <style>
+      text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+      .title { font-size: 22px; font-weight: 700; fill: #1f2328; }
+      .subtitle { font-size: 13px; fill: #656d76; }
+      .mod { fill: #1168bd; }
+      .mod2 { fill: #438dd5; }
+      .ext { fill: #8b949e; }
+      .file { fill: #ffffff; stroke: #d0d7de; stroke-width: 1.5; }
+      .fname { fill: #1f2328; font-size: 13px; font-weight: 600; }
+      .fdesc { fill: #656d76; font-size: 10.5px; }
+      .hdr { fill: #ffffff; font-size: 14px; font-weight: 700; }
+      .line { fill: #e8f1fa; font-size: 12px; }
+      .exttext { fill: #ffffff; font-size: 12px; font-weight: 600; }
+      .edge { stroke: #8c959f; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .elabel { fill: #57606a; font-size: 10.5px; }
+      .note { fill: #656d76; font-size: 11px; }
+    </style>
+  </defs>
+  <rect width="1040" height="900" fill="#ffffff"/>
+  <text class="title" x="40" y="62" style="white-space: pre; font-size: 22px;">EDJAS — Internal Structure</text>
+  <text class="subtitle" x="40" y="84" style="white-space: pre; font-size: 13px;">Module responsibilities, and how one extraction run flows through the package</text>
+  <g transform="matrix(1, 0, 0, 1, 1.828064, -5.816246)">
+    <rect class="file" x="40" y="130" width="170" height="56" rx="8" style="stroke: rgb(133, 133, 134);"/>
+    <text class="fname" style="stroke: rgb(133, 133, 134); text-anchor: middle; white-space: pre;" x="125" y="155">report.toml</text>
+    <text class="fdesc" style="stroke: rgb(133, 133, 134); text-anchor: middle; white-space: pre;" x="125" y="172">extraction spec</text>
+  </g>
+  <g transform="matrix(1, 0, 0, 1, 1.828064, -5.786804)">
+    <rect class="file" x="40" y="215" width="170" height="56" rx="8" style="stroke: rgb(133, 133, 134);"/>
+    <text class="fname" style="stroke: rgb(133, 133, 134); text-anchor: middle; white-space: pre;" x="125" y="240">workbook.xlsx</text>
+    <text class="fdesc" style="stroke: rgb(133, 133, 134); text-anchor: middle; white-space: pre;" x="125" y="257">never modified</text>
+  </g>
+  <g transform="matrix(1, 0, 0, 1, 687.413818, -384.996429)">
+    <rect class="file" x="40" y="527" width="170" height="56" rx="8" style="stroke: rgb(133, 133, 134);"/>
+    <text class="fname" style="stroke: rgb(133, 133, 134); text-anchor: middle; white-space: pre;" x="125" y="545">JSON</text>
+    <text class="fdesc" style="stroke: rgb(133, 133, 134); text-anchor: middle; white-space: pre;" x="125" y="562">standard output</text>
+  </g>
+  <g transform="matrix(1, 0, 0, 1, 117.995659, 22.694124)">
+    <rect class="mod" x="270" y="110" width="250" height="86" rx="8"/>
+    <text class="hdr" x="286" y="136" style="white-space: pre;">__init__.py — CLI</text>
+    <text class="line" x="286" y="158" style="white-space: pre;">main() · argparse · --version</text>
+    <text class="line" x="286" y="178" style="white-space: pre;">json.dump(default=json_default)</text>
+    <text class="elabel" x="404" y="221" style="white-space: pre;">read_spec(xlsx, spec)</text>
+  </g>
+  <g transform="matrix(1, 0, 0, 1, 117.995659, 18.30122)">
+    <rect class="mod" x="270" y="240" width="250" height="86" rx="8"/>
+    <text class="hdr" x="286" y="266" style="white-space: pre;">spec.py</text>
+    <text class="line" x="286" y="288" style="white-space: pre;">load_spec() → [extract] mapping</text>
+    <text class="line" x="286" y="308" style="white-space: pre;">read_spec() drives the run</text>
+    <text class="elabel" x="404" y="351" style="white-space: pre;">evaluate(expr) per key</text>
+  </g>
+  <g transform="matrix(1, 0, 0, 1, 32.995659, 67.0186)">
+    <rect class="mod" x="270" y="370" width="420" height="195" rx="8"/>
+    <text class="hdr" x="286" y="397" style="white-space: pre;">read_params.py — expression engine</text>
+    <text class="line" x="286" y="423" style="white-space: pre;">evaluate()  ·  [ref] · {ref} · bare ref</text>
+    <text class="line" x="286" y="445" style="white-space: pre;">parse_pipeline() · _scan()  — tokeniser</text>
+    <text class="line" x="286" y="467" style="white-space: pre;">read_scalar() · range_values() · range_to_dict()</text>
+    <text class="line" x="286" y="489" style="white-space: pre;">_resolve_sheet_and_refs() · extract_values()</text>
+    <text class="line" x="286" y="511" style="white-space: pre;">apply_pipeline() · _resolve_arg()</text>
+  </g>
+  <g transform="matrix(1, 0, 0, 1, -708.171936, 61.561661)">
+    <rect class="ext" x="750" y="240" width="250" height="48" rx="8"/>
+    <text class="exttext" style="white-space: pre;" x="875" y="269" text-anchor="middle">tomllib · stdlib TOML parser</text>
+  </g>
+  <g transform="matrix(1, 0, 0, 1, -708.171936, 76.610062)">
+    <g>
+      <rect class="ext" x="750" y="305" width="250" height="48" rx="8"/>
+    </g>
+    <text class="exttext" x="875" y="334" text-anchor="middle" style="white-space: pre;">openpyxl · reads .xlsx</text>
+  </g>
+  <rect class="mod2" x="389.521" y="677.469" width="250" height="96.261" rx="8" style="stroke-width: 1;"/>
+  <text class="hdr" x="405.521" y="704.469" style="white-space: pre; stroke-width: 1; font-size: 14px;">functions.py — registry</text>
+  <text class="line" x="405.521" y="730.469" style="white-space: pre; stroke-width: 1; font-size: 12px;">Contains default functions</text>
+  <text class="line" x="405.521" y="752.469" style="white-space: pre; stroke-width: 1; font-size: 12px;">User can augment to extend</text>
+  <text class="elabel" style="white-space: pre; font-size: 10.5px;" x="335.894" y="293.438" text-anchor="middle">parse spec</text>
+  <text class="elabel" x="375.96" y="380.287" text-anchor="middle" style="white-space: pre; font-size: 10.5px;">load_workbook</text>
+  <path class="edge" d="M 290.912 326.823 L 391.947 300.676"/>
+  <text class="elabel" x="544.602" y="655.69" text-anchor="middle" style="white-space: pre; font-size: 10.5px;">lookup()</text>
+  <text class="elabel" x="657.167" y="93.873" style="white-space: pre; font-size: 10.5px;" transform="matrix(1, 0, 0, 1, -0.125495, 50.133671)">JSON to<tspan x="657.1669921875" dy="1em">​</tspan>  stdout</text>
+  <g transform="matrix(1, 0, 0, 1, 175.829391, 182.335114)">
+    <text class="note" x="40" y="620" style="white-space: pre;">Extracted values return up the same path: read_params → spec.py → CLI, which serialises them with json_default.</text>
+    <text class="note" x="40" y="640" style="white-space: pre;">find_first.py ships alongside these modules but is not used by the extraction path (column, row, top_left).</text>
+  </g>
+  <path d="M 170.826 259.627 H 333.707 L 333.707 253.127 L 359.015 261.127 L 333.707 269.127 L 333.707 262.627 H 170.826 V 259.627 Z" bx:shape="arrow 170.826 253.127 188.189 16 3 25.308 0 1@011bb576" style="fill: rgb(17, 104, 189);" transform="matrix(0.957741, -0.287632, 0.287632, 0.957741, -27.005205, 34.526436)"/>
+  <path d="M 181.529 259.626 H 337.109 L 337.109 253.126 L 362.417 261.126 L 337.109 269.126 L 337.109 262.626 H 181.529 V 259.626 Z" bx:shape="arrow 181.529 253.126 180.888 16 3 25.308 0 1@6bea5137" style="fill: rgb(17, 104, 189); stroke-width: 1;" transform="matrix(0.992023, 0.126058, -0.126058, 0.992023, 64.628189, -129.858841)"/>
+  <path d="M 637.782 259.626 H 700.703 L 700.703 253.126 L 726.011 261.126 L 700.703 269.126 L 700.703 262.626 H 637.782 V 259.626 Z" bx:shape="arrow 637.782 253.126 88.229 16 3 25.308 0 1@9622cfd4" style="fill: rgb(17, 104, 189); stroke-width: 1;" transform="matrix(0.999943, -0.010695, 0.010695, 0.999943, -3.913253, -82.636917)"/>
+  <path class="edge" d="M 291.553 405.414 L 391.939 309.368" style="stroke-width: 1.6;"/>
+  <path class="edge" d="M 512.79 217.825 L 513.201 257.199" style="stroke-width: 1.6;"/>
+  <path class="edge" d="M 510.929 345.885 L 511.34 437.996" style="stroke-width: 1.6;"/>
+  <path class="edge" d="M 505.432 630.456 L 506.193 678.963" style="stroke-width: 1.6;"/>
+  <g transform="matrix(1, 0, 0, 1, -758.032288, 230.486633)">
+    <rect class="mod" x="807.995" y="364.822" width="64" height="32" rx="8" style="stroke-width: 1;"/>
+    <g transform="matrix(0.983571, 0, 0, 0.933054, 703.856445, -216.036087)">
+      <rect class="file" x="105.878" y="592.119" width="65.069" height="21.435" rx="8" style=""/>
+    </g>
+    <rect class="ext" x="807.995" y="314.064" width="64" height="14" rx="8" style="stroke-width: 1;"/>
+    <text style="fill: rgb(51, 51, 51); font-family: Arial, sans-serif; font-size: 12px; white-space: pre;" x="883.244" y="325.302">External/stdlib</text>
+    <text style="fill: rgb(51, 51, 51); font-family: Arial, sans-serif; font-size: 12px; white-space: pre; stroke-width: 1;" x="883.244" y="350.681">File/stream</text>
+    <text style="fill: rgb(51, 51, 51); font-family: Arial, sans-serif; font-size: 12px; white-space: pre; stroke-width: 1;" x="883.244" y="385.06">EDJAS module</text>
+    <text style="fill: rgb(51, 51, 51); font-family: Arial, sans-serif; font-size: 12px; white-space: pre; stroke-width: 1;" x="809.945" y="302.468">KEY</text>
+  </g>
+</svg>

@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="620" viewBox="0 0 1040 620" role="img" aria-label="C4 system context diagram for EDJAS">
+  <title>EDJAS — C4 System Context Diagram</title>
+  <desc>Level 1 C4 diagram. A spreadsheet maintainer keeps working in the workbook, unaffected by EDJAS. An analyst authors extraction specs and runs EDJAS, which reads the workbooks read-only and emits JSON for downstream systems.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8c959f"/>
+    </marker>
+    <style>
+      text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+      .title { font-size: 22px; font-weight: 700; fill: #1f2328; }
+      .subtitle { font-size: 13px; fill: #656d76; }
+      .person { fill: #08427b; }
+      .system { fill: #1168bd; }
+      .ext { fill: #8b949e; }
+      .hdr { fill: #ffffff; font-size: 15px; font-weight: 700; }
+      .tag { fill: #cfe3f5; font-size: 11px; }
+      .tag-e { fill: #eaeef2; font-size: 11px; }
+      .desc { fill: #e8f1fa; font-size: 11.5px; }
+      .desc-e { fill: #f4f6f8; font-size: 11.5px; }
+      .edge { stroke: #8c959f; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .elabel { fill: #57606a; font-size: 10.5px; }
+      .note { fill: #656d76; font-size: 11px; }
+    </style>
+  </defs>
+
+  <rect width="1040" height="620" fill="#ffffff"/>
+  <text class="title" x="40" y="44">EDJAS — C4 System Context Diagram</text>
+  <text class="subtitle" x="40" y="66">Level 1: who is involved, and what EDJAS touches</text>
+
+  <!-- spreadsheet maintainer -->
+  <circle class="person" cx="177" cy="115" r="17"/>
+  <rect class="person" x="65" y="135" width="225" height="96" rx="8"/>
+  <text class="hdr" x="81" y="166">Spreadsheet maintainer</text>
+  <text class="tag" x="81" y="184">[Person]</text>
+  <text class="desc" x="81" y="204">Runs the business in the</text>
+  <text class="desc" x="81" y="222">workbook; unaffected by EDJAS</text>
+
+  <!-- analyst -->
+  <circle class="person" cx="842" cy="115" r="17"/>
+  <rect class="person" x="730" y="135" width="225" height="96" rx="8"/>
+  <text class="hdr" x="746" y="166">Analyst / integrator</text>
+  <text class="tag" x="746" y="184">[Person]</text>
+  <text class="desc" x="746" y="204">Authors extraction specs</text>
+  <text class="desc" x="746" y="222">and runs EDJAS</text>
+
+  <!-- spreadsheet store -->
+  <rect class="ext" x="70" y="380" width="215" height="130" rx="8"/>
+  <text class="hdr" x="86" y="414">Spreadsheet store</text>
+  <text class="tag-e" x="86" y="434">[External system]</text>
+  <text class="desc-e" x="86" y="456">Shared drive, SharePoint</text>
+  <text class="desc-e" x="86" y="474">or OneDrive holding the</text>
+  <text class="desc-e" x="86" y="492">.xlsx workbooks</text>
+
+  <!-- EDJAS -->
+  <rect class="system" x="400" y="380" width="240" height="130" rx="8"/>
+  <text class="hdr" x="416" y="414">EDJAS</text>
+  <text class="tag" x="416" y="434">[Software System]</text>
+  <text class="desc" x="416" y="456">Extracts selected data from</text>
+  <text class="desc" x="416" y="474">spreadsheets as JSON,</text>
+  <text class="desc" x="416" y="492">without modifying them</text>
+
+  <!-- downstream -->
+  <rect class="ext" x="735" y="380" width="230" height="130" rx="8"/>
+  <text class="hdr" x="751" y="414">Downstream systems</text>
+  <text class="tag-e" x="751" y="434">[External system]</text>
+  <text class="desc-e" x="751" y="456">Dashboards, APIs, data</text>
+  <text class="desc-e" x="751" y="474">pipelines and site builders</text>
+  <text class="desc-e" x="751" y="492">that consume the JSON</text>
+
+  <!-- edges -->
+  <path class="edge" d="M177,231 L177,376"/>
+  <text class="elabel" x="189" y="300">maintains the workbook</text>
+
+  <path class="edge" d="M800,233 C748,278 688,332 624,376"/>
+  <text class="elabel" x="694" y="290" text-anchor="end">authors specs,</text>
+  <text class="elabel" x="694" y="304" text-anchor="end">runs extractions</text>
+
+  <path class="edge" d="M398,445 L289,445"/>
+  <text class="elabel" x="343" y="437" text-anchor="middle">reads, read-only</text>
+
+  <path class="edge" d="M642,445 L731,445"/>
+  <text class="elabel" x="686" y="437" text-anchor="middle">emits JSON</text>
+
+  <!-- note -->
+  <text class="note" x="40" y="566">The maintainer never interacts with EDJAS: the workbook keeps its existing shape and workflow, and EDJAS only ever reads it.</text>
+  <text class="note" x="40" y="586">Dark blue = people · blue = the system in scope · grey = systems outside it.</text>
+</svg>

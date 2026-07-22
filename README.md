@@ -84,6 +84,9 @@ title_again = "B2"             # an A1 cell on the active sheet
 prices      = "{Data!D1:E3}"   # a sheet-qualified A1 range
 tags        = "[Tags]"         # a named range
 ```
+Here's a dump of the spreadsheet with the named ranges marked in the same colors as the referenced cells.
+
+![img The Example Workbook](https://raw.githubusercontent.com/holdenweb/edjas/main/images/example_workbook.png)
 
 ## Transforming values with functions
 

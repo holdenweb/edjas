@@ -75,8 +75,17 @@ def test_coercion_passes_through_none():
     assert fn("int")([1, None, 3]) == [1, None, 3]
 
 
-def test_round2():
-    assert fn("round2")([1.23456, 2.0, "x"]) == [1.23, 2.0, "x"]
+def test_round_defaults_to_two_places():
+    assert fn("round")([1.23456, 2.0, "x"]) == [1.23, 2.0, "x"]
+
+
+def test_round_takes_a_digits_argument():
+    assert fn("round")([1.23456], 3) == [1.235]
+    assert fn("round")([1.23456], 0) == [1.0]
+
+
+def test_round_leaves_non_floats_alone():
+    assert fn("round")({"a": 7, "b": "text", "c": None}) == {"a": 7, "b": "text", "c": None}
 
 
 def test_isodate_scalars_and_passthrough():
@@ -85,6 +94,13 @@ def test_isodate_scalars_and_passthrough():
         "2026-06-29T09:30:00",
         "open",
     ]
+
+
+def test_isodate_drops_midnight_time():
+    """A date-only cell arrives as midnight; render it as a plain date."""
+    assert fn("isodate")(datetime(2026, 3, 31, 0, 0)) == "2026-03-31"
+    # a real midnight-adjacent time is still shown in full
+    assert fn("isodate")(datetime(2026, 3, 31, 0, 1)) == "2026-03-31T00:01:00"
 
 
 # --- registry plumbing -----------------------------------------------------
@@ -112,6 +128,13 @@ def test_json_default_serialises_dates():
     payload = {"d": date(2026, 6, 29), "t": time(9, 30), "dt": datetime(2026, 6, 29, 9, 30)}
     out = json.loads(json.dumps(payload, default=json_default))
     assert out == {"d": "2026-06-29", "t": "09:30:00", "dt": "2026-06-29T09:30:00"}
+
+
+def test_json_default_drops_midnight_time_like_isodate():
+    """Automatic serialisation and isodate must agree on date-only cells."""
+    midnight = datetime(2026, 3, 31, 0, 0)
+    assert json.loads(json.dumps(midnight, default=json_default)) == "2026-03-31"
+    assert fn("isodate")(midnight) == "2026-03-31"
 
 
 def test_json_default_still_raises_for_unknown_types():

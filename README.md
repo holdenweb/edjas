@@ -50,6 +50,41 @@ A `ref` is either a **named range** or an A1-style cell range (`D3:E9`), optiona
 qualified with a sheet name (`Summary!D3:E9`). Named ranges are recommended: they
 survive layout changes, whereas bare cell references do not.
 
+### A worked example
+
+The repository ships a sample workbook and a spec exercising every construct
+described here. Run them together:
+
+```
+edjas examples/example.xlsx examples/example.toml
+```
+
+`examples/example.xlsx` is a small café report spread over four sheets:
+
+| Named range | Where | Shape |
+|-------------|-------|-------|
+| `Title`, `PeriodEnd`, `AvgSpend` | `Summary!B2:B4` | single cells |
+| `Hours`, `Prices`, `Covers`, `Codes` | `Data` | two-column name/value ranges |
+| `Tags` | `Data!M1:M3` | a single column |
+| `Sales` | `Sales!A1:C4` | a table with a heading row |
+| `Staff` | `Staff!A1:C2` | one field per row, so it needs transposing |
+
+The three forms, against that workbook (comments show the JSON produced):
+
+```toml
+title = "Title"      # "Riverside Cafe"
+tags  = "[Tags]"     # ["Vegan", "Gluten-free", "Dairy-free"]
+hours = "{Hours}"    # {"Monday": "07:00-20:00", ... "Sunday": "Closed"}
+```
+
+and the same three ways of writing a reference:
+
+```toml
+title_again = "B2"             # an A1 cell on the active sheet
+prices      = "{Data!D1:E3}"   # a sheet-qualified A1 range
+tags        = "[Tags]"         # a named range
+```
+
 ## Transforming values with functions
 
 Any expression may append a **pipeline** of functions, separated by `|`, applied left
@@ -66,8 +101,32 @@ arbitrary code runs). The built-ins:
 | `keys` / `values` / `items` | `{object}` | the object's keys, values, or `[key, value]` pairs |
 | `invert` | `{object}` | swaps keys and values |
 | `int` / `float` / `str` | any | coerces every value to that type |
-| `round2` | any | rounds every floating-point value to two decimal places |
+| `round` | any | rounds every floating-point value; takes the number of decimal places (default 2) |
 | `isodate` | any | formats date/time values as ISO-8601 strings |
+
+Each of them against the sample workbook, with the JSON they produce:
+
+```toml
+sales_rows       = "[Sales]"                       # [["Region","Q1","Q2"], ["North",1200,1350], ...]
+sales_records    = "[Sales | records]"             # [{"Region":"North","Q1":1200,"Q2":1350}, ...]
+sales_columns    = "[Sales | columns]"             # {"Region":["North","South","East"], "Q1":[1200,980,1440], ...}
+sales_transposed = "[Sales | transpose]"           # [["Region","North","South","East"], ["Q1",1200,980,1440], ...]
+staff_flat       = "[Staff | flatten]"             # ["name","Ada","Grace","role","Barista","Chef"]
+staff            = "[Staff | transpose | records]" # [{"name":"Ada","role":"Barista"}, {"name":"Grace","role":"Chef"}]
+price_list       = "{Prices | keys}"               # ["Tea","Coffee","Bacon roll"]
+price_values     = "{Prices | values}"             # [3.25, 4, 8.25]
+price_items      = "{Prices | items}"              # [["Tea",3.25], ["Coffee",4], ["Bacon roll",8.25]]
+code_names       = "{Codes | invert}"              # {"Gluten-free":"GF", "Vegan":"VG"}
+covers           = "{Covers | int}"                # {"Mon":128, "Tue":143, "Wed":97}
+prices_as_text   = "{Prices | str}"                # {"Tea":"3.25", "Coffee":"4", "Bacon roll":"8.25"}
+average_spend    = "AvgSpend | round 2"            # 8.75   (the cell holds 8.7451)
+spend_whole      = "AvgSpend | round 0"            # 9.0
+period_ending    = "PeriodEnd | isodate"           # "2026-03-31"
+```
+
+`Covers` holds its numbers as text, which is why `int` is worth applying. A date-only
+cell is stored as midnight, and both `isodate` and the automatic serialisation render
+it as a plain date rather than `2026-03-31T00:00:00`; a genuine time of day is kept.
 
 ### Function arguments
 
@@ -76,6 +135,18 @@ A function may take arguments after its name, separated by spaces. An argument i
 read as another range reference. The extracted value is always passed as the first
 argument, so `[Price | round 2]` means `round(Price, 2)`. (Grouping parentheses are
 reserved for a possible future extension and are not yet supported.)
+
+`round` is the built-in that takes an argument; the same mechanism serves functions
+you supply yourself:
+
+```python
+from edjas import read_spec
+read_spec("examples/example.xlsx", "examples/example.toml",
+          functions={"join": lambda v, sep: sep.join(v)})
+```
+
+With that in place a spec entry of `tag_line = '[Tags | join ", "]'` yields
+`"Vegan, Gluten-free, Dairy-free"`.
 
 ## Usage
 

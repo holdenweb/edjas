@@ -1,0 +1,39 @@
+# Sample EDJAS spec: one entry for every construct the README describes.
+# Run it with:  edjas examples/example.xlsx examples/example.toml
+
+[extract]
+
+# --- the three extraction forms ------------------------------------------
+title = "Title"                        # bare ref  -> scalar
+tags = "[Tags]"                        # [ ]       -> list
+hours = "{Hours}"                      # { }       -> object
+
+# --- ways of writing a reference -----------------------------------------
+title_again = "B2"                     # A1 cell on the active sheet
+prices = "{Data!D1:E3}"                # sheet-qualified A1 range
+
+# --- reshaping a table ----------------------------------------------------
+sales_rows = "[Sales]"                 # rows, as they sit in the sheet
+sales_records = "[Sales | records]"    # header row -> a list of objects
+sales_columns = "[Sales | columns]"    # header row -> an object of columns
+sales_transposed = "[Sales | transpose]"
+staff_flat = "[Staff | flatten]"
+
+# --- chaining -------------------------------------------------------------
+staff = "[Staff | transpose | records]"
+
+# --- object functions -----------------------------------------------------
+price_list = "{Prices | keys}"
+price_values = "{Prices | values}"
+price_items = "{Prices | items}"
+code_names = "{Codes | invert}"
+
+# --- coercion and formatting ----------------------------------------------
+covers = "{Covers | int}"              # text-held numbers -> integers
+covers_float = "{Covers | float}"
+prices_as_text = "{Prices | str}"
+average_spend = "AvgSpend | round 2"   # a built-in taking an argument
+spend_rounded = "AvgSpend | round"     # digits defaults to 2
+spend_whole = "AvgSpend | round 0"
+period_ending = "PeriodEnd | isodate"
+period_raw = "PeriodEnd"               # serialised as ISO-8601 anyway

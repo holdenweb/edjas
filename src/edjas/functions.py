@@ -12,7 +12,7 @@ built-in :data:`DEFAULT_FUNCTIONS`; :func:`json_default` is the ``json`` encoder
 hook that lets date/time cells serialise instead of raising.
 """
 
-from datetime import date, time
+from datetime import date, datetime, time
 
 __all__ = ["DEFAULT_FUNCTIONS", "resolve", "lookup", "json_default"]
 
@@ -124,15 +124,30 @@ def invert(obj):
 
 # --- coercion / formatting -------------------------------------------------
 
-def _round2_scalar(x):
-    return round(x, 2) if isinstance(x, float) else x
+def _iso(value):
+    """ISO-8601 text for a date/time, dropping a time component of exact midnight.
+
+    Spreadsheets store a date-only cell as midnight on that day, so rendering it as
+    ``2026-03-31`` rather than ``2026-03-31T00:00:00`` reflects what was meant.
+    """
+    if isinstance(value, datetime) and value.time() == time(0, 0):
+        return value.date().isoformat()
+    return value.isoformat()
 
 
 def _isodate_scalar(x):
-    return x.isoformat() if isinstance(x, (date, time)) else x
+    return _iso(x) if isinstance(x, (date, time)) else x
 
 
-round2 = lambda value: _map_scalars(_round2_scalar, value)  # noqa: E731
+def round_values(value, digits=2):
+    """Round every floating-point value to ``digits`` decimal places."""
+
+    def scalar(x):
+        return round(x, digits) if isinstance(x, float) else x
+
+    return _map_scalars(scalar, value)
+
+
 isodate = lambda value: _map_scalars(_isodate_scalar, value)  # noqa: E731
 
 
@@ -151,7 +166,7 @@ DEFAULT_FUNCTIONS = {
     "int": _coercer(int),
     "float": _coercer(float),
     "str": _coercer(str),
-    "round2": round2,
+    "round": round_values,
     "isodate": isodate,
 }
 
@@ -175,9 +190,12 @@ def lookup(registry, name):
 
 
 def json_default(obj):
-    """``json`` encoder hook: serialise date/datetime/time as ISO-8601."""
+    """``json`` encoder hook: serialise date/datetime/time as ISO-8601.
+
+    A datetime at exactly midnight becomes a plain date, matching ``isodate``.
+    """
     if isinstance(obj, (date, time)):
-        return obj.isoformat()
+        return _iso(obj)
     raise TypeError(
         f"Object of type {type(obj).__name__} is not JSON serializable"
     )

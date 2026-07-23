@@ -319,6 +319,17 @@ def test_unknown_function_raises(tmp_path):
         read_spec(xlsx, spec)
 
 
+def test_error_names_the_failing_key(tmp_path):
+    """A failing expression is reported with its spec key and the expression."""
+    xlsx = make_workbook(tmp_path, {"A1": 1}, {})
+    spec = make_spec(tmp_path, {"good": "A1", "oops": "[Nope | records]"})
+    with pytest.raises(ValueError, match=r"oops") as excinfo:
+        read_spec(xlsx, spec)
+    msg = str(excinfo.value)
+    assert "oops" in msg and "Nope" in msg           # key and offending expression
+    assert excinfo.value.__cause__ is not None       # original error preserved
+
+
 def test_spec_without_extract_table_raises(tmp_path):
     xlsx = make_workbook(tmp_path, {"A1": "x"}, {})
     bad = tmp_path / "bad.toml"

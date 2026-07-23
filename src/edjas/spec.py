@@ -42,4 +42,10 @@ def read_spec(spreadsheet, spec, functions=None):
     mapping = load_spec(spec)
     workbook = openpyxl.load_workbook(spreadsheet, data_only=False)
     registry = _functions.resolve(functions)
-    return {key: evaluate(workbook, expr, registry) for key, expr in mapping.items()}
+    result = {}
+    for key, expr in mapping.items():
+        try:
+            result[key] = evaluate(workbook, expr, registry)
+        except Exception as exc:  # add the spec key/expression to any failure
+            raise ValueError(f"extracting {key!r} from {expr!r}: {exc}") from exc
+    return result

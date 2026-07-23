@@ -7,6 +7,7 @@ from pathlib import Path
 import openpyxl
 import pytest
 from openpyxl.workbook.defined_name import DefinedName
+from openpyxl.worksheet.table import Table
 
 from edjas import json_default, read_spec
 from edjas.read_params import parse_pipeline
@@ -42,11 +43,13 @@ def make_workbook(tmp_path, cells, defined_names, extra_sheets=None):
 def make_spec(tmp_path, mapping, name="spec.toml"):
     """Write an [extract] TOML spec from {key: expression}.
 
-    Expressions are emitted as TOML literal strings (single-quoted), so they may
-    contain the double quotes EDJAS uses for string arguments.
+    Expressions are emitted as TOML *multi-line* literal strings (triple single
+    quotes), so a single expression may freely contain both the double quotes EDJAS
+    uses for string arguments and the single quotes Excel uses to quote spaced sheet
+    names (``'Cover Sheet'!A1``).
     """
     lines = ["[extract]"]
-    lines += [f"{key} = '{expr}'" for key, expr in mapping.items()]
+    lines += [f"{key} = '''{expr}'''" for key, expr in mapping.items()]
     path = tmp_path / name
     path.write_text("\n".join(lines) + "\n")
     return path
@@ -131,6 +134,28 @@ def test_parse_pipeline_rejects_empty_stage():
 def test_parse_pipeline_rejects_unterminated_string():
     with pytest.raises(ValueError, match="Unterminated string"):
         parse_pipeline('Words | join "oops')
+
+
+def test_parse_pipeline_single_quoted_spaced_sheet_source():
+    """A single-quoted spaced sheet name is one token, quotes preserved."""
+    assert parse_pipeline("'Cover Sheet'!A1") == ("'Cover Sheet'!A1", [])
+
+
+def test_parse_pipeline_quoted_sheet_with_stage():
+    assert parse_pipeline("'Sales Data'!A1:B2 | records") == (
+        "'Sales Data'!A1:B2",
+        [("records", [])],
+    )
+
+
+def test_parse_pipeline_doubled_apostrophe_sheet():
+    """Excel doubles an embedded apostrophe inside the quotes; '' is not a close."""
+    assert parse_pipeline("'Bob''s Data'!C3") == ("'Bob''s Data'!C3", [])
+
+
+def test_parse_pipeline_rejects_unterminated_sheet_quote():
+    with pytest.raises(ValueError, match="Unterminated sheet name"):
+        parse_pipeline("'Cover Sheet!A1")
 
 
 # --- spec-driven extraction: the three forms --------------------------------
@@ -312,6 +337,30 @@ def test_multi_area_union_range_reports_clearly(tmp_path):
         read_spec(xlsx, spec)
 
 
+def test_inline_spaced_sheet_scalar(tmp_path):
+    """A single-quoted spaced sheet name works inline in a spec, not only via a name."""
+    xlsx = make_workbook(tmp_path, {}, {}, extra_sheets={"Cover Sheet": {"A1": "hi"}})
+    spec = make_spec(tmp_path, {"t": "'Cover Sheet'!A1"})
+    assert read_spec(xlsx, spec) == {"t": "hi"}
+
+
+def test_inline_spaced_sheet_list_with_pipe(tmp_path):
+    """A quoted spaced sheet reference survives a following pipe stage."""
+    xlsx = make_workbook(
+        tmp_path, {}, {},
+        extra_sheets={"Sales Data": {"A1": "Region", "B1": "Q1", "A2": "North", "B2": 100}},
+    )
+    spec = make_spec(tmp_path, {"rows": "['Sales Data'!A1:B2 | records]"})
+    assert read_spec(xlsx, spec) == {"rows": [{"Region": "North", "Q1": 100}]}
+
+
+def test_inline_sheet_with_doubled_apostrophe(tmp_path):
+    """An embedded apostrophe (doubled by Excel) resolves to the real sheet name."""
+    xlsx = make_workbook(tmp_path, {}, {}, extra_sheets={"Bob's Data": {"C3": 42}})
+    spec = make_spec(tmp_path, {"a": "'Bob''s Data'!C3"})
+    assert read_spec(xlsx, spec) == {"a": 42}
+
+
 def test_defined_name_case_insensitive(tmp_path):
     """Excel matches defined names case-insensitively; so should EDJAS."""
     xlsx = make_workbook(tmp_path, {"B2": "hi"}, {"Title": "$B$2"})
@@ -380,6 +429,85 @@ def test_uncached_formula_reads_as_none(tmp_path):
     xlsx = _formula_workbook(tmp_path, "=A1+A2")  # no cached value injected
     spec = make_spec(tmp_path, {"total": "Total"})
     assert read_spec(xlsx, spec) == {"total": None}
+
+
+# --- Excel Tables (ws.tables) ----------------------------------------------
+
+def _workbook_with_table(tmp_path, table_name, ref, cells, table_sheet="Sheet1"):
+    """Build a workbook containing a real Excel Table (``ws.tables``), no names.
+
+    The active sheet is always ``Sheet1``; the table is placed on ``table_sheet``
+    (which may be a second sheet, to exercise the cross-sheet scan). Cells hold data
+    only. Mirrors how GSS good-practice gov spreadsheets name their data as Tables.
+    """
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Sheet1"
+    target = ws if table_sheet == "Sheet1" else wb.create_sheet(table_sheet)
+    for coord, value in cells.items():
+        target[coord] = value
+    target.add_table(Table(displayName=table_name, ref=ref))
+    path = tmp_path / "tabled.xlsx"
+    wb.save(path)
+    return path
+
+
+def test_table_name_records(tmp_path):
+    """An Excel Table name resolves as a range source, header row included."""
+    xlsx = _workbook_with_table(
+        tmp_path, "Sales_Table", "A1:B3",
+        {"A1": "Region", "B1": "Q1", "A2": "North", "B2": 100, "A3": "South", "B3": 200},
+    )
+    spec = make_spec(tmp_path, {"sales": "[Sales_Table | records]"})
+    assert read_spec(xlsx, spec) == {
+        "sales": [{"Region": "North", "Q1": 100}, {"Region": "South", "Q1": 200}]
+    }
+
+
+def test_table_name_found_on_non_active_sheet(tmp_path):
+    """A table living on a sheet other than the active one is still found."""
+    xlsx = _workbook_with_table(
+        tmp_path, "Rev_Table", "A1:B2",
+        {"A1": "k", "B1": "v", "A2": "x", "B2": 1},
+        table_sheet="Data",
+    )
+    spec = make_spec(tmp_path, {"rows": "[Rev_Table | records]"})
+    assert read_spec(xlsx, spec) == {"rows": [{"k": "x", "v": 1}]}
+
+
+def test_table_name_case_insensitive(tmp_path):
+    """Table names match case-insensitively, like defined and sheet names."""
+    xlsx = _workbook_with_table(
+        tmp_path, "Sales_Table", "A1:B2",
+        {"A1": "k", "B1": "v", "A2": "x", "B2": 1},
+    )
+    spec = make_spec(tmp_path, {"rows": "[sales_table | records]"})
+    assert read_spec(xlsx, spec) == {"rows": [{"k": "x", "v": 1}]}
+
+
+def test_table_name_scalar_is_top_left(tmp_path):
+    """A bare table reference reads the top-left cell of the table's range."""
+    xlsx = _workbook_with_table(
+        tmp_path, "T", "A1:B2",
+        {"A1": "Header", "B1": "v", "A2": "x", "B2": 1},
+    )
+    spec = make_spec(tmp_path, {"h": "T"})
+    assert read_spec(xlsx, spec) == {"h": "Header"}
+
+
+def test_defined_name_wins_over_table_of_same_name(tmp_path):
+    """Defined names take precedence over Table names sharing the same identifier."""
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Sheet1"
+    ws["A1"], ws["B1"], ws["A2"], ws["B2"] = "tk", "tv", "tabval", 1
+    ws.add_table(Table(displayName="Thing", ref="A1:B2"))
+    ws["D1"] = "named"
+    wb.defined_names.add(DefinedName("Thing", attr_text="Sheet1!$D$1"))
+    path = tmp_path / "clash.xlsx"
+    wb.save(path)
+    spec = make_spec(tmp_path, {"t": "Thing"})
+    assert read_spec(path, spec) == {"t": "named"}
 
 
 # --- errors and serialization ----------------------------------------------

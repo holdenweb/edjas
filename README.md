@@ -45,9 +45,20 @@ Each value is an **extraction expression**. There are three forms:
   - **`{ref}`** — a two-column range as a JSON object (left column names, right
     column values).
 
-A `ref` is either a **named range** or an A1-style cell range (`D3:E9`), optionally
-qualified with a sheet name (`Summary!D3:E9`). Named ranges are recommended: they
-survive layout changes, whereas bare cell references do not.
+A `ref` may be:
+
+  - a **named range** (`Prices`);
+  - the name of an **Excel Table** (`RevisionTriangles_Table1`) — its whole range,
+    header row included, wherever the table lives in the workbook; or
+  - an **A1-style cell range** (`D3:E9`), optionally qualified with a sheet name
+    (`Summary!D3:E9`).
+
+Named ranges and tables are recommended: they survive layout changes, whereas bare
+cell references do not. This also fits the way well-produced government and statistical
+spreadsheets are built, where the published data is laid out as named Excel Tables. A
+sheet name that contains spaces or punctuation must be wrapped in single quotes, exactly
+as Excel writes it — `'Cover Sheet'!A1`, or `'Bob''s Data'!C3` with an embedded
+apostrophe doubled.
 
 A cell containing a **formula** yields its computed value, not the formula text, so
 extracting a total or an average works as you would expect. EDJAS reads the value

@@ -5,14 +5,20 @@ def _scan(inner):
     """Tokenise pipeline text into pipe separators and tagged word tokens.
 
     Returns a list of ``("pipe", None, False)`` and ``("tok", text, is_string)``
-    items. A double-quoted substring becomes one token with ``is_string=True`` and
-    its quotes stripped; whitespace and ``|`` inside quotes are literal.
+    items. Two kinds of quoting group characters into a token so that whitespace and
+    ``|`` inside them are literal:
+
+    - **Double quotes** delimit a string *argument*: the quotes are stripped and the
+      token is tagged ``is_string=True`` (an empty ``""`` is still a token).
+    - **Single quotes** are Excel's *sheet-name* quoting (``'Cover Sheet'!A1``): the
+      quotes are kept (so the sheet resolver can strip them) and the token stays a
+      plain reference (``is_string=False``). A doubled ``''`` is an escaped apostrophe,
+      not a closing quote, matching how Excel writes ``'Bob''s Data'``.
     """
     tokens = []
     buf = []
     is_string = False
     have_token = False
-    in_quote = False
 
     def flush():
         nonlocal buf, is_string, have_token
@@ -22,28 +28,48 @@ def _scan(inner):
         is_string = False
         have_token = False
 
-    for ch in inner:
-        if in_quote:
-            if ch == '"':
-                in_quote = False
-            else:
-                buf.append(ch)
-            continue
-        if ch == '"':
-            in_quote = True
+    i, n = 0, len(inner)
+    while i < n:
+        ch = inner[i]
+        if ch == '"':  # a double-quoted string argument; quotes stripped
             is_string = True
-            have_token = True  # an empty "" is still a (string) token
+            have_token = True
+            i += 1
+            while i < n and inner[i] != '"':
+                buf.append(inner[i])
+                i += 1
+            if i >= n:
+                raise ValueError(f"Unterminated string in markup: {inner!r}")
+            i += 1  # skip the closing quote
+        elif ch == "'":  # Excel sheet-name quoting; quotes kept, '' escapes a quote
+            have_token = True
+            buf.append("'")
+            i += 1
+            while i < n:
+                if inner[i] == "'":
+                    if i + 1 < n and inner[i + 1] == "'":
+                        buf.append("''")  # doubled apostrophe: literal, stay in quote
+                        i += 2
+                        continue
+                    buf.append("'")
+                    i += 1
+                    break
+                buf.append(inner[i])
+                i += 1
+            else:
+                raise ValueError(f"Unterminated sheet name in markup: {inner!r}")
         elif ch == "|":
             flush()
             tokens.append(("pipe", None, False))
+            i += 1
         elif ch.isspace():
             flush()
+            i += 1
         else:
             buf.append(ch)
             have_token = True
+            i += 1
     flush()
-    if in_quote:
-        raise ValueError(f"Unterminated string in markup: {inner!r}")
     return tokens
 
 
@@ -123,18 +149,45 @@ def _get_sheet(wb, sheet_name):
         raise
 
 
+def _lookup_table(wb, name):
+    """Return ``(sheet, ref)`` for an Excel Table named ``name``, else None.
+
+    Excel Tables (``ws.tables``) are per-sheet, not workbook-level like defined names,
+    so every sheet is scanned. ``ws.tables.items()`` yields ``(name, "A5:D7")`` — the
+    value is the A1 range string, which already spans the table's header and data rows.
+    Matching is case-insensitive, as Excel treats table names. This is how GSS
+    good-practice government spreadsheets label their data (named Tables, not names).
+    """
+    lowered = name.lower()
+    for sheet in wb.worksheets:
+        for table_name, ref in sheet.tables.items():
+            if table_name.lower() == lowered:
+                return sheet, ref
+    return None
+
+
 def _resolve_sheet_and_refs(wb, range_spec):
     """Resolve a named range or A1-style spec to ``(sheet, cell_refs)``.
 
-    A defined name is expanded to its ``Sheet!refs`` text; an explicit ``!`` selects
-    that sheet; otherwise the active sheet is used. Defined names and sheet names are
-    matched case-insensitively, as Excel does. Excel wraps a sheet name that contains
-    spaces or other special characters in single quotes (doubling any embedded quote),
-    so the quotes are stripped before the sheet is looked up.
+    A defined name is expanded to its ``Sheet!refs`` text; an Excel Table name resolves
+    directly to ``(sheet, ref)``; an explicit ``!`` selects that sheet; otherwise the
+    active sheet is used. Defined names, table names and sheet names are matched
+    case-insensitively, as Excel does. Excel wraps a sheet name that contains spaces or
+    other special characters in single quotes (doubling any embedded quote), so the
+    quotes are stripped before the sheet is looked up.
+
+    Precedence is defined name, then table name, then a raw A1/sheet reference. Excel
+    keeps defined names and table names in one namespace and forbids collisions, so the
+    order rarely matters; defined-name-first leaves existing behaviour untouched.
     """
     defined = _lookup_defined_name(wb, range_spec)
     if defined is not None:
         range_spec = defined.attr_text
+    elif "!" not in range_spec and ":" not in range_spec:
+        # A bare identifier that is not a defined name may be an Excel Table name.
+        table = _lookup_table(wb, range_spec)
+        if table is not None:
+            return table
     if "," in range_spec:  # a union of areas: EDJAS reads a single rectangle only
         raise ValueError(f"multi-area (union) ranges are not supported: {range_spec}")
     if "!" in range_spec:

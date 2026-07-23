@@ -40,7 +40,10 @@ def read_spec(spreadsheet, spec, functions=None):
     spreadsheet is opened read-only and never modified.
     """
     mapping = load_spec(spec)
-    workbook = openpyxl.load_workbook(spreadsheet, data_only=False)
+    # data_only=True yields the last value Excel cached for a formula cell, so
+    # consumers get computed results rather than the formula text. A workbook that
+    # has never been recalculated in Excel has no cache, so such cells read as None.
+    workbook = openpyxl.load_workbook(spreadsheet, data_only=True)
     registry = _functions.resolve(functions)
     result = {}
     for key, expr in mapping.items():

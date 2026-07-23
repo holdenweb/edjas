@@ -49,6 +49,12 @@ A `ref` is either a **named range** or an A1-style cell range (`D3:E9`), optiona
 qualified with a sheet name (`Summary!D3:E9`). Named ranges are recommended: they
 survive layout changes, whereas bare cell references do not.
 
+A cell containing a **formula** yields its computed value, not the formula text, so
+extracting a total or an average works as you would expect. EDJAS reads the value
+Excel cached the last time it saved the workbook; a workbook that has never been
+recalculated in Excel — one produced entirely by another tool, say — has no cached
+value, and such a cell reads as `null`.
+
 ### A worked example
 
 The repository ships a sample workbook and a spec exercising every construct

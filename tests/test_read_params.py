@@ -1,4 +1,6 @@
 import json
+import re
+import zipfile
 from datetime import datetime
 from pathlib import Path
 
@@ -332,6 +334,52 @@ def test_exact_case_defined_name_still_wins(tmp_path):
     )
     spec = make_spec(tmp_path, {"a": "Item", "b": "item"})
     assert read_spec(xlsx, spec) == {"a": "upper", "b": "lower"}
+
+
+# --- formula cells (read with data_only=True) ------------------------------
+
+def _formula_workbook(tmp_path, formula, cached=None):
+    """Build a workbook with one formula cell (named ``Total``).
+
+    openpyxl cannot write a cached formula result, so when ``cached`` is given we
+    inject the ``<v>`` that Excel would store on recalculation, letting
+    ``data_only=True`` read a genuine computed value.
+    """
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "S"
+    ws["A1"], ws["A2"] = 10, 20
+    ws["A3"] = formula
+    wb.defined_names.add(DefinedName("Total", attr_text="S!$A$3"))
+    raw = tmp_path / "raw.xlsx"
+    wb.save(raw)
+    if cached is None:
+        return raw
+    with zipfile.ZipFile(raw) as zin:
+        blobs = {n: zin.read(n) for n in zin.namelist()}
+    sheet = next(n for n in blobs if re.search(r"xl/worksheets/sheet1\.xml$", n))
+    f = formula.lstrip("=")
+    xml = blobs[sheet].decode("utf-8").replace(f"<f>{f}</f>", f"<f>{f}</f><v>{cached}</v>")
+    blobs[sheet] = xml.encode("utf-8")
+    out = tmp_path / "cached.xlsx"
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zout:
+        for name, data in blobs.items():
+            zout.writestr(name, data)
+    return out
+
+
+def test_formula_cell_yields_cached_value(tmp_path):
+    """A formula cell reads as its cached computed value, not the formula text."""
+    xlsx = _formula_workbook(tmp_path, "=A1+A2", cached=30)
+    spec = make_spec(tmp_path, {"total": "Total"})
+    assert read_spec(xlsx, spec) == {"total": 30}
+
+
+def test_uncached_formula_reads_as_none(tmp_path):
+    """A workbook never recalculated in Excel has no cache, so a formula is None."""
+    xlsx = _formula_workbook(tmp_path, "=A1+A2")  # no cached value injected
+    spec = make_spec(tmp_path, {"total": "Total"})
+    assert read_spec(xlsx, spec) == {"total": None}
 
 
 # --- errors and serialization ----------------------------------------------

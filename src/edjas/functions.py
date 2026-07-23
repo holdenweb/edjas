@@ -1,14 +1,17 @@
-"""Functions applied by the EDJAS ``[f name]`` / ``{f name}`` markup.
+"""Functions applied by the EDJAS pipeline notation.
 
-A function token transforms the value the bare markup would yield: ``[f name]``
-applies ``f`` to the vector/table produced by ``[name]``, and ``{f name}``
-applies ``f`` to the object produced by ``{name}``. Functions are resolved from
-a controlled registry rather than evaluated, so an untrusted spreadsheet cannot
-execute arbitrary code.
+An extraction expression may append a pipeline of functions, separated by ``|``
+and applied left to right after the value is extracted -- for example
+``[Sales | records]``, ``{Prices | int}``, or, on a scalar, ``Total | round 2``.
+Each function receives the value produced so far as its first positional argument,
+followed by any pipeline arguments (a number, a double-quoted string, or a bare
+word naming another range); so ``[Price | round 2]`` calls ``round(Price, 2)``.
+Functions are looked up in a controlled registry rather than evaluated, so a spec
+can only invoke registered functions and never executes arbitrary code.
 
-Each function takes the already-extracted Python value and returns a
-JSON-serialisable result. ``resolve()`` merges caller-supplied functions over the
-built-in :data:`DEFAULT_FUNCTIONS`; :func:`json_default` is the ``json`` encoder
+Each function returns a JSON-serialisable result. :func:`resolve` merges
+caller-supplied functions over the built-in :data:`DEFAULT_FUNCTIONS` and
+:func:`lookup` fetches one by name; :func:`json_default` is the ``json`` encoder
 hook that lets date/time cells serialise instead of raising.
 """
 

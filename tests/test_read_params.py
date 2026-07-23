@@ -310,6 +310,30 @@ def test_multi_area_union_range_reports_clearly(tmp_path):
         read_spec(xlsx, spec)
 
 
+def test_defined_name_case_insensitive(tmp_path):
+    """Excel matches defined names case-insensitively; so should EDJAS."""
+    xlsx = make_workbook(tmp_path, {"B2": "hi"}, {"Title": "$B$2"})
+    spec = make_spec(tmp_path, {"t": "title"})  # workbook defines "Title"
+    assert read_spec(xlsx, spec) == {"t": "hi"}
+
+
+def test_sheet_name_case_insensitive(tmp_path):
+    """A sheet-qualified ref matches the sheet name case-insensitively too."""
+    xlsx = make_workbook(tmp_path, {"D1": 1, "E1": 2}, {})
+    spec = make_spec(tmp_path, {"row": "[sheet1!D1:E1]"})  # sheet is "Sheet1"
+    assert read_spec(xlsx, spec) == {"row": [1, 2]}
+
+
+def test_exact_case_defined_name_still_wins(tmp_path):
+    """An exact-case match is preferred over the case-insensitive fallback."""
+    xlsx = make_workbook(
+        tmp_path, {"B2": "upper", "C3": "lower"},
+        {"Item": "$B$2", "item": "$C$3"},
+    )
+    spec = make_spec(tmp_path, {"a": "Item", "b": "item"})
+    assert read_spec(xlsx, spec) == {"a": "upper", "b": "lower"}
+
+
 # --- errors and serialization ----------------------------------------------
 
 def test_unknown_function_raises(tmp_path):

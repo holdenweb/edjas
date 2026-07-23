@@ -95,22 +95,52 @@ def _unquote_sheet(sheet_name):
     return sheet_name
 
 
+def _lookup_defined_name(wb, name):
+    """Return the defined name matching ``name``, case-insensitively like Excel.
+
+    An exact-case match is preferred; otherwise the first case-insensitive match is
+    used (Excel forbids defined names that differ only in case). Returns None if the
+    name is not defined.
+    """
+    if name in wb.defined_names:
+        return wb.defined_names[name]
+    lowered = name.lower()
+    for key, defined_name in wb.defined_names.items():
+        if key.lower() == lowered:
+            return defined_name
+    return None
+
+
+def _get_sheet(wb, sheet_name):
+    """Fetch a worksheet by name, falling back to a case-insensitive match."""
+    try:
+        return wb[sheet_name]
+    except KeyError:
+        lowered = sheet_name.lower()
+        for title in wb.sheetnames:
+            if title.lower() == lowered:
+                return wb[title]
+        raise
+
+
 def _resolve_sheet_and_refs(wb, range_spec):
     """Resolve a named range or A1-style spec to ``(sheet, cell_refs)``.
 
     A defined name is expanded to its ``Sheet!refs`` text; an explicit ``!`` selects
-    that sheet; otherwise the active sheet is used. Excel wraps a sheet name that
-    contains spaces or other special characters in single quotes (doubling any
-    embedded quote), so the quotes are stripped before the sheet is looked up.
+    that sheet; otherwise the active sheet is used. Defined names and sheet names are
+    matched case-insensitively, as Excel does. Excel wraps a sheet name that contains
+    spaces or other special characters in single quotes (doubling any embedded quote),
+    so the quotes are stripped before the sheet is looked up.
     """
-    if range_spec in wb.defined_names:
-        range_spec = wb.defined_names[range_spec].attr_text
+    defined = _lookup_defined_name(wb, range_spec)
+    if defined is not None:
+        range_spec = defined.attr_text
     if "," in range_spec:  # a union of areas: EDJAS reads a single rectangle only
         raise ValueError(f"multi-area (union) ranges are not supported: {range_spec}")
     if "!" in range_spec:
         # A sheet name never contains '!', so split on the first one only.
         sheet_name, cell_refs = range_spec.split("!", 1)
-        sheet = wb[_unquote_sheet(sheet_name)]
+        sheet = _get_sheet(wb, _unquote_sheet(sheet_name))
     else:
         sheet = wb.active
         cell_refs = range_spec

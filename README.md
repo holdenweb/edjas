@@ -189,6 +189,42 @@ data = read_spec("data.xlsx", "report.toml",
 
 Date and time cells are serialised as ISO-8601 strings automatically.
 
+## Rendering an HTML report
+
+Extraction gives you a plain data structure; turning that into a readable document is a
+separate, optional step. EDJAS ships a small helper, `render_report`, that feeds the
+extracted data straight into a [Jinja2](https://jinja.palletsprojects.com/) template.
+Jinja2 is an **optional** dependency — the core install never pulls it in — so enable it
+with the `demo` extra:
+
+```
+pip install edjas[demo]
+```
+
+```python
+from edjas import render_report
+
+html = render_report(
+    "data.xlsx", "report.toml",
+    template="report.html", templates_dir="templates",
+)
+```
+
+The extracted dict is passed to the template as `data`; any extra keyword arguments
+become further template variables. Because rendering only *reads* the workbook, the
+source file is left untouched, exactly as with plain extraction.
+
+A complete, self-contained example lives in [`examples/report/`](examples/report): a real,
+unmodified UK government workbook — the ONS Retail Sales Index summary tables, published
+under the Open Government Licence — a spec that pulls its cover-sheet metadata, its
+contents list, and a named Excel Table, and three templates (a base layout, the report,
+and a shared table macro) that compose into
+[`report.html`](examples/report/report.html). Build it with:
+
+```
+python examples/report/build.py
+```
+
 ## Architecture
 
 Four diagrams describe how EDJAS is put together, zooming in a level at a time.

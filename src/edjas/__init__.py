@@ -5,6 +5,7 @@ import sys
 from importlib.metadata import PackageNotFoundError, version
 
 from .spec import read_spec
+from .report import render_report
 from .functions import DEFAULT_FUNCTIONS, json_default
 
 try:
@@ -12,7 +13,7 @@ try:
 except PackageNotFoundError:  # not installed (e.g. running from a source checkout)
     __version__ = "0.0.0+unknown"
 
-__all__ = ["read_spec", "DEFAULT_FUNCTIONS", "json_default", "__version__"]
+__all__ = ["read_spec", "render_report", "DEFAULT_FUNCTIONS", "json_default", "__version__"]
 
 def main(argv=None):
     parser = argparse.ArgumentParser(

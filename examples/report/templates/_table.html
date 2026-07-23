@@ -1,0 +1,27 @@
+{# Reusable table macro: render a list of records (dicts) as an HTML table.
+   Keys of the first record become the column headings; numeric cells are right-
+   aligned. Used for every tabular section of the report, so one definition serves
+   both the contents list and the revisions data. #}
+{% macro render_table(rows, caption=None) -%}
+{% if rows %}
+<div class="table-wrap">
+  <table>
+    {% if caption %}<caption>{{ caption }}</caption>{% endif %}
+    <thead>
+      <tr>{% for key in rows[0].keys() %}<th>{{ key }}</th>{% endfor %}</tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        {% for value in row.values() %}
+        <td{% if value is number %} class="num"{% endif %}>{{ value if value is not none else "" }}</td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p><em>No data.</em></p>
+{% endif %}
+{%- endmacro %}

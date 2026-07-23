@@ -1,0 +1,15 @@
+# EDJAS extraction spec for the ONS Retail Sales Index summary workbook.
+#
+# The workbook is never modified; every value below is *read* from it. This spec shows
+# the reference kinds a well-produced government spreadsheet needs:
+#   - single-quoted spaced sheet names ('Cover Sheet'!A1),
+#   - a named Excel Table (RevisionTriangles_Table1), resolved wherever it lives,
+#   - and a pipeline that reshapes and tidies the data (records, then round).
+[extract]
+title     = "'Cover Sheet'!A1"
+published = "'Cover Sheet'!A5"
+next_due  = "'Cover Sheet'!A6"
+contact   = "'Cover Sheet'!A12"
+source    = "'Cover Sheet'!A15"
+contents  = "['Contents'!A2:B5 | records]"
+revisions = "[RevisionTriangles_Table1 | records | round 3]"

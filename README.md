@@ -1,7 +1,6 @@
 # EDJAS: Extract Data in JSON from Any Spreadsheet
 
 - Sources at https://github.com/holdenweb/edjas
-- Demonstration code at https://github.com/holdenweb/edjas-demo
 
 This project is an attempt to help organisations that insist on managing
 their businesses, or major aspects thereof, using spreadsheets.
@@ -191,8 +190,6 @@ the `images/` directory.
   - [**Internal structure**](https://github.com/holdenweb/edjas/blob/main/images/internal-structure.svg)
     — down at the code: the modules that make up the package, and how a single
     extraction run flows through them from the spec and workbook to standard output.
-
-A demonstration of the system can be found at [https://github.com/holdenweb/edjas-demo](https://github.com/holdenweb/edjas-demo).
 
 This is particularly useful for audiences that have an interest in only a
 limited number of features from a possibly quite large spreadsheet.

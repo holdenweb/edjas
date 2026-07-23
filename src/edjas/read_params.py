@@ -88,17 +88,29 @@ def extract_values(sheet, range_spec, flatten=True):
     else:
         return result
 
+def _unquote_sheet(sheet_name):
+    """Strip Excel's quoting from a sheet name (`'Bob''s Data'` -> `Bob's Data`)."""
+    if sheet_name.startswith("'") and sheet_name.endswith("'"):
+        return sheet_name[1:-1].replace("''", "'")
+    return sheet_name
+
+
 def _resolve_sheet_and_refs(wb, range_spec):
     """Resolve a named range or A1-style spec to ``(sheet, cell_refs)``.
 
     A defined name is expanded to its ``Sheet!refs`` text; an explicit ``!`` selects
-    that sheet; otherwise the active sheet is used.
+    that sheet; otherwise the active sheet is used. Excel wraps a sheet name that
+    contains spaces or other special characters in single quotes (doubling any
+    embedded quote), so the quotes are stripped before the sheet is looked up.
     """
     if range_spec in wb.defined_names:
         range_spec = wb.defined_names[range_spec].attr_text
+    if "," in range_spec:  # a union of areas: EDJAS reads a single rectangle only
+        raise ValueError(f"multi-area (union) ranges are not supported: {range_spec}")
     if "!" in range_spec:
-        sheet_name, cell_refs = range_spec.split("!")
-        sheet = wb[sheet_name]
+        # A sheet name never contains '!', so split on the first one only.
+        sheet_name, cell_refs = range_spec.split("!", 1)
+        sheet = wb[_unquote_sheet(sheet_name)]
     else:
         sheet = wb.active
         cell_refs = range_spec

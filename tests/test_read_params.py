@@ -257,6 +257,59 @@ def test_cross_sheet_reference_argument(tmp_path):
     assert out == {"totals": [11, 22, 33]}
 
 
+# --- Excel reference edge cases --------------------------------------------
+
+def _workbook_with_named_sheet(tmp_path, sheet_name, cells, defined_names):
+    """Build a workbook whose data sheet has an arbitrary (e.g. spaced) name."""
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = sheet_name
+    for coord, value in cells.items():
+        ws[coord] = value
+    for name, ref in defined_names.items():
+        wb.defined_names.add(DefinedName(name, attr_text=ref))
+    path = tmp_path / "named.xlsx"
+    wb.save(path)
+    return path
+
+
+def test_named_range_on_sheet_with_spaces(tmp_path):
+    """Excel quotes a spaced sheet name ('Sales Data'!$B$2); the quotes must be stripped."""
+    xlsx = _workbook_with_named_sheet(
+        tmp_path, "Sales Data", {"B2": "hi"}, {"Greeting": "'Sales Data'!$B$2"}
+    )
+    spec = make_spec(tmp_path, {"g": "Greeting"})
+    assert read_spec(xlsx, spec) == {"g": "hi"}
+
+
+def test_named_range_to_spaced_sheet_list(tmp_path):
+    """A [range] via a named range also reaches a spaced sheet (quotes stripped)."""
+    xlsx = _workbook_with_named_sheet(
+        tmp_path, "Q1 Data", {"A1": 1, "B1": 2}, {"Row": "'Q1 Data'!$A$1:$B$1"}
+    )
+    spec = make_spec(tmp_path, {"row": "[Row]"})
+    assert read_spec(xlsx, spec) == {"row": [1, 2]}
+
+
+def test_sheet_name_with_embedded_apostrophe(tmp_path):
+    """Excel doubles an embedded apostrophe inside the quotes ('Bob''s')."""
+    xlsx = _workbook_with_named_sheet(
+        tmp_path, "Bob's Data", {"C3": 42}, {"Answer": "'Bob''s Data'!$C$3"}
+    )
+    spec = make_spec(tmp_path, {"a": "Answer"})
+    assert read_spec(xlsx, spec) == {"a": 42}
+
+
+def test_multi_area_union_range_reports_clearly(tmp_path):
+    """A union reference is unsupported and must fail with a clear message."""
+    xlsx = _workbook_with_named_sheet(
+        tmp_path, "Sheet", {"A1": 1, "B2": 2}, {"U": "Sheet!$A$1,Sheet!$B$2"}
+    )
+    spec = make_spec(tmp_path, {"u": "U"})
+    with pytest.raises(ValueError, match="multi-area"):
+        read_spec(xlsx, spec)
+
+
 # --- errors and serialization ----------------------------------------------
 
 def test_unknown_function_raises(tmp_path):

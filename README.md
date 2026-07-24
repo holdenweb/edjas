@@ -214,6 +214,19 @@ The extracted dict is passed to the template as `data`; any extra keyword argume
 become further template variables. Because rendering only *reads* the workbook, the
 source file is left untouched, exactly as with plain extraction.
 
+Spreadsheets sometimes carry very long column headings. `render_report` takes an
+optional `headings={old: new}` mapping that renames headings in the extracted data
+before rendering; it defaults to `None`, so headings are shown verbatim unless you ask
+otherwise:
+
+```python
+html = render_report(
+    "data.xlsx", "report.toml",
+    template="report.html", templates_dir="templates",
+    headings={"A very long column title (percentage points)": "Change (pp)"},
+)
+```
+
 A complete, self-contained example lives in [`examples/report/`](examples/report): a real,
 unmodified UK government workbook — the ONS Retail Sales Index summary tables, published
 under the Open Government Licence — a spec that pulls its cover-sheet metadata, its
@@ -222,7 +235,8 @@ and a shared table macro) that compose into
 [`report.html`](examples/report/report.html). Build it with:
 
 ```
-python examples/report/build.py
+python examples/report/build.py                     # faithful to the workbook
+python examples/report/build.py --shorten-headings  # tidy the long ONS column titles
 ```
 
 ## Architecture

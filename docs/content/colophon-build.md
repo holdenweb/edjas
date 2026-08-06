@@ -14,17 +14,17 @@ listed above, by the same `edjas-examples` command anyone can run.
 
 **Some of what you are reading came out of a spreadsheet.** The gallery cards' framing —
 the shape tag, the one-line description, the publisher — is held in a small workbook,
-`docs/site.xlsx`, and extracted at build time by an ordinary EDJAS specification. That is
+`docs/site.xlsx`, and extracted when this site is built by an ordinary EDJAS specification. That is
 the same "one workbook, many audiences" idea the essay argues for, applied to this site.
 
 **Some of it deliberately did not.** The list of built-in functions, the API signatures
-and the command-line help are read from the live Python objects by introspection, not from
+and the command-line help are read from the EDJAS code itself by introspection, not from
 a spreadsheet. A reference page that can disagree with the code is worse than no reference
 page at all. Where a table *is* held in the workbook and also exists in code, a test
 asserts the two agree, so a stale copy fails the suite rather than reaching you.
 
 The prose is Markdown, composed rather than copied: this page renders the real
-`ATTRIBUTION.md` that ships inside the package, and the [essay](site:why.html) renders the
+`ATTRIBUTION.md` that ships inside the package, and [this page](site:why.html) renders the
 companion package's own README. Each gallery page takes its introduction from the comment
 header of the specification file it describes. Nothing is duplicated by hand, so nothing
 can quietly fall out of step.

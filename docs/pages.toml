@@ -97,9 +97,9 @@ title = "Colophon"
 description = "Where the example data comes from, its licence, and how this site was built."
 nav = "Colophon"
 parts = [
-  { file = "content/colophon-lead.md" },
-  { file = "../edjas-examples/src/edjas_examples/ATTRIBUTION.md", skip_first_heading = true },
   { file = "content/colophon-build.md" },
+  { file = "../edjas-examples/src/edjas_examples/ATTRIBUTION.md"},
+  { file = "content/examples-lead.md" },
 ]
 
 [gallery]

@@ -1,4 +1,4 @@
-# Source data and licences
+## Source data and licences
 
 All seven bundled workbooks are UK public-sector statistics, Crown copyright, and
 redistributed here **unmodified** under the **Open Government Licence v3.0** purely as

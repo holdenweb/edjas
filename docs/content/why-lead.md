@@ -1,6 +1,6 @@
 # Why EDJAS
 
-*The essay below is the guide that ships with the worked examples. It is written for
+*What you see below is the guide that ships with the worked examples. It is written for
 people who work with spreadsheets rather than for programmers, and it makes the case
 for the whole approach by walking through seven real government workbooks.*
 

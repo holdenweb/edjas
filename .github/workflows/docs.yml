@@ -1,0 +1,69 @@
+# Build the documentation site and publish it to GitHub Pages.
+#
+# The site appears at https://holdenweb.github.io/edjas/ once Pages is switched on.
+# That is a one-time manual step this workflow cannot perform for you:
+#
+#     Settings -> Pages -> Build and deployment -> Source -> GitHub Actions
+#
+# Without it the workflow runs green and publishes nothing.
+#
+# The test suite runs before the site is built, so a broken suite cannot ship a site.
+# That also makes every push a check that all seven example workbooks still render.
+
+name: docs
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let a running deployment finish rather than cancelling it part-way; queued runs
+# collapse to the most recent.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      # --locked fails if uv.lock is out of step with pyproject.toml, rather than
+      # silently resolving something different from the local development environment.
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Run the test suite
+        run: uv run --frozen python -m pytest -q
+
+      # --strict turns an unmapped repository link, a missing content file or a missing
+      # attribution section into a failure instead of a warning.
+      - name: Build the site
+        run: uv run --frozen python docs/build_site.py --strict
+
+      - name: Upload the Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/_site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

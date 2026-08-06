@@ -1,6 +1,6 @@
 [project]
 name = "edjas"
-version = "0.8.0a1"
+version = "0.8.0a2"
 description = "Extract data in JSON from any spreadsheet"
 authors = [
     { name = "Steve Holden", email = "steve@holdenweb.com" },
@@ -49,7 +49,7 @@ packages = ["src/edjas"]
 # The core sdist must not carry the companion package's tree (workbooks, templates,
 # rendered reports) -- that data ships only in the separate edjas-examples distribution.
 # /docs is the documentation-site source and output; it is repo furniture, not a package.
-exclude = ["/edjas-examples", "/docs", "/uv.lock", "/.claude"]
+exclude = ["/edjas-examples", "/docs", "/.github", "/uv.lock", "/.claude"]
 
 [dependency-groups]
 # jinja2 + edjas-examples exercise the optional reporting demo in tests; edjas-examples

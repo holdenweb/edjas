@@ -1,0 +1,13 @@
+# EDJAS spec for the DWP public spending tables (Annual Report & Accounts companion).
+#
+# 'Table 1' has a space in its sheet name, so the reference is single-quoted exactly as
+# Excel writes it. The ledger runs from row 8 (Resource DEL) to row 122 (Total AME);
+# rows 129 onwards are footnotes and are deliberately left out.
+#
+# Budget categories (Resource DEL, Resource AME, Capital DEL, ...) head runs of
+# "Section A/B/C..." line items, each closed by a "Total ..." subtotal, with "Of which:"
+# breakdowns. Columns are six years: four outturn, then plans.
+[extract]
+title  = "'Table 1'!A1"
+header = "['Table 1'!A5:G5]"
+rows   = "['Table 1'!A8:G122]"

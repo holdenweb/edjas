@@ -1,0 +1,31 @@
+{# One example: what the workbook is and the awkwardness it presents (taken from the
+   spec's own comment header), the spec itself, the live report, and its attribution.
+   The page carries its own prose because iframe content is not part of the host page
+   for search or for a screen reader's document flow. #}
+{% extends "site.html" %}
+
+{% block title %}{{ example.name }} — EDJAS gallery{% endblock %}
+
+{% block main %}
+<p class="crumb"><a href="{{ url('gallery/index.html') }}">← All examples</a></p>
+<h1>{{ example.name }}</h1>
+
+{{ example.intro | safe }}
+
+{{ content | safe }}
+
+<h2>The specification</h2>
+<p class="meta">The whole of <code>{{ example.spec_name }}</code>, applied to the
+unmodified <code>{{ example.workbook }}</code>.</p>
+<pre><code>{{ example.spec }}</code></pre>
+
+<h2>The report it produces</h2>
+<figure class="report-embed">
+  <iframe title="EDJAS report: {{ example.name }}"
+          src="{{ url(example.report) }}" loading="lazy"></iframe>
+  <figcaption>Exactly what <code>edjas-examples --example {{ example.name }}</code>
+  writes. <a href="{{ url(example.report) }}">Open it full width</a>.</figcaption>
+</figure>
+
+{{ example.attribution | safe }}
+{% endblock %}

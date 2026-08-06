@@ -1,0 +1,33 @@
+{# The site chrome. Extends the very template the example reports use, so a
+   documentation page and a generated report are the same document with different
+   content. Site-only styling lives in assets/docs.css, never in base.html. #}
+{% extends "base.html" %}
+
+{% block title %}{{ page.title }} — EDJAS{% endblock %}
+
+{% block head_extra %}
+<meta name="description" content="{{ page.description | default('EDJAS: extract data in JSON from any spreadsheet.') }}">
+<link rel="stylesheet" href="{{ url('assets/docs.css') }}">
+{% endblock %}
+
+{% block content %}
+<a class="skip" href="#content">Skip to content</a>
+<nav class="site" aria-label="Main">
+  <a class="brand" href="{{ url('index.html') }}">EDJAS</a>
+  <ul>
+    {% for item in nav %}
+    <li><a href="{{ url(item.url) }}"
+      {%- if item.url == page.url or item.url == page.nav_group %} aria-current="page"{% endif %}>{{ item.nav }}</a></li>
+    {% endfor %}
+  </ul>
+</nav>
+<main id="content">
+{% block main %}{{ content | safe }}{% endblock %}
+</main>
+{% endblock %}
+
+{% block footer %}
+<p>Part of the <a href="{{ url('index.html') }}">EDJAS documentation</a> —
+<a href="{{ url('colophon.html') }}">how this site was built</a>.
+Source at <a href="https://github.com/holdenweb/edjas">github.com/holdenweb/edjas</a>.</p>
+{% endblock %}

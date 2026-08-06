@@ -1,0 +1,12 @@
+# EDJAS spec for HM Treasury PESA 2025, Table 1.1 (Total Managed Expenditure).
+#
+# A three-tier ledger: CURRENT / CAPITAL EXPENDITURE sections, budget categories
+# (Resource DEL, Resource departmental AME, ...), line items, and "Total ..." rows,
+# across six years (four outturn + two plans). The header row is the years; the label
+# column has a blank corner cell. The template classifies section headings (no figures),
+# "Total ..." subtotals, and ordinary line items for styling.
+[extract]
+title  = "'Table_1_1'!A1"
+unit   = "'Table_1_1'!G2"
+header = "['Table_1_1'!A4:G4]"
+rows   = "['Table_1_1'!A6:G53]"

@@ -1,0 +1,58 @@
+{# Hierarchical ledger macro: render a header row plus a body of [label, ...figures]
+   rows, classifying each row so the template can style the ledger's structure:
+     - section  -> a heading row with no figures (e.g. "CURRENT EXPENDITURE"), spanned
+     - subtotal -> a "Total ..." / "All ..." roll-up row, emphasised
+     - line     -> an ordinary line item, indented
+   Figures get thousands separators; whole numbers show no decimals, fractional ones
+   keep a single place (so £ amounts and % / per-head columns both read correctly).
+   Non-numeric cells (e.g. "-" for nil) pass through unchanged. #}
+{% macro _num(v) -%}
+{%- if v is number -%}
+{%- if v % 1 == 0 -%}{{ "{:,.0f}".format(v) }}{%- else -%}{{ "{:,.1f}".format(v) }}{%- endif -%}
+{%- elif v is not none -%}{{ v }}{%- endif -%}
+{%- endmacro %}
+{% macro render_ledger(header, rows) -%}
+<div class="table-wrap">
+  <table class="ledger">
+    <thead>
+      <tr>
+        {% for h in header %}
+        <th scope="col"{% if not loop.first %} class="num"{% endif %}>{{ h if h is not none else "" }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+        {% set label = (row[0] | string).strip() if row[0] is not none else "" %}
+        {% set values = row[1:] %}
+        {# A data row is one with any non-empty cell: a number, or a marker such as the
+           "-" these releases use for nil. A row whose cells are all empty is a heading.
+           Some workbooks pad category headings with string "0"s, which count as empty. #}
+        {% set filled = [] %}
+        {% for v in values %}
+          {% if v is number or (v is string and v.strip() not in ["", "0"]) %}
+            {% set _ = filled.append(v) %}
+          {% endif %}
+        {% endfor %}
+        {% set has_figures = filled | length > 0 %}
+        {% set lower = label | lower %}
+        {% if not label and not has_figures %}
+          {# blank spacer row -- skip #}
+        {% elif not has_figures %}
+        <tr class="section"><th scope="colgroup" class="rowlabel" colspan="{{ header | length }}">{{ label }}</th></tr>
+        {% elif lower.startswith("total ") or lower.startswith("all ") %}
+        <tr class="subtotal">
+          <th scope="row" class="rowlabel">{{ label }}</th>
+          {% for v in values %}<td class="num">{{ _num(v) }}</td>{% endfor %}
+        </tr>
+        {% else %}
+        <tr class="line">
+          <th scope="row" class="rowlabel">{{ label }}</th>
+          {% for v in values %}<td class="num">{{ _num(v) }}</td>{% endfor %}
+        </tr>
+        {% endif %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{%- endmacro %}

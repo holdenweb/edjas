@@ -1,0 +1,53 @@
+{# The landing page: the promise, the three-panel proof, then three doors. #}
+{% extends "site.html" %}
+
+{% block main %}
+<div class="hero">
+  <h1>Extract data in JSON from any spreadsheet</h1>
+  <p class="lede">EDJAS reads the data locked up in your spreadsheets and hands it to
+  everything else — as JSON, or as a readable report. You describe what you want in a
+  small text file beside the workbook.</p>
+  <p class="promise">Your spreadsheet is never modified. It is only ever read.</p>
+  <p class="cta"><code>pip install edjas</code></p>
+</div>
+
+<section class="proof">
+  <h2>How it works, in three panels</h2>
+  <ol class="panels">
+    <li>
+      <h3>1. Your workbook, untouched</h3>
+      <p>A real ONS statistical release. Nothing is added to it — no macros, no marker
+      columns, no restructuring.</p>
+      <p><a href="{{ url('gallery/index.html') }}">See all seven examples</a></p>
+    </li>
+    <li>
+      <h3>2. A specification file</h3>
+<pre><code>[extract]
+title     = "'Cover Sheet'!A1"
+contents  = "['Contents'!A2:B5 | records]"
+revisions = "[RevisionTriangles_Table1 | records | round 3]"</code></pre>
+      <p><a href="{{ url('reference/spec-language.html') }}">The specification language</a></p>
+    </li>
+    <li>
+      <h3>3. JSON, or a report</h3>
+      <p>Run <code>edjas workbook.xlsx spec.toml</code> for JSON, or render it straight
+      into a styled HTML document.</p>
+      <p><a href="{{ url('gallery/retail.html') }}">See the report this produces</a></p>
+    </li>
+  </ol>
+</section>
+
+{{ content | safe }}
+
+<section class="doors">
+  <h2>Where next</h2>
+  <ul class="cards">
+    <li><a href="{{ url('why.html') }}"><strong>I have a spreadsheet</strong>
+      <span>Why this approach, and what you might do with it.</span></a></li>
+    <li><a href="{{ url('start.html') }}"><strong>I want to try it</strong>
+      <span>Install, write a spec, get JSON and a report.</span></a></li>
+    <li><a href="{{ url('gallery/index.html') }}"><strong>Show me real examples</strong>
+      <span>Seven government workbooks and the reports they produce.</span></a></li>
+  </ul>
+</section>
+{% endblock %}

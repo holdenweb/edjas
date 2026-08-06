@@ -1,0 +1,22 @@
+{# The gallery index: one card per example. No iframes here -- seven embedded documents
+   on one page is a lot of loading for no benefit. The cards' editorial framing (shape
+   tag, teaser, publisher) is extracted from docs/site.xlsx by EDJAS itself. #}
+{% extends "site.html" %}
+
+{% block main %}
+<h1>{{ page.title }}</h1>
+{{ content | safe }}
+
+<ul class="cards gallery">
+  {% for example in examples %}
+  <li>
+    <a href="{{ example.url }}">
+      {% if example.shape %}<span class="tag">{{ example.shape }}</span>{% endif %}
+      <strong>{{ example.name }}</strong>
+      {% if example.teaser %}<span>{{ example.teaser }}</span>{% endif %}
+      {% if example.publisher %}<span class="publisher">{{ example.publisher }}</span>{% endif %}
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+{% endblock %}

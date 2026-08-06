@@ -1,0 +1,42 @@
+{# The specification language. The two summary tables are extracted from docs/site.xlsx
+   by EDJAS at build time; the prose around them is Markdown. #}
+{% extends "site.html" %}
+
+{% block main %}
+<h1>{{ page.title }}</h1>
+{{ content | safe }}
+
+<h2 id="the-three-forms">The three forms</h2>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th scope="col">Written as</th><th scope="col">Produces</th><th scope="col">For example</th></tr></thead>
+    <tbody>
+      {% for row in tables.forms %}
+      <tr>
+        <th scope="row"><code>{{ row.form }}</code></th>
+        <td>{{ row.produces }}</td>
+        <td><code>{{ row.example }}</code></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h2 id="the-three-kinds-of-reference">The three kinds of reference</h2>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th scope="col">Kind</th><th scope="col">Written as</th><th scope="col">Notes</th></tr></thead>
+    <tbody>
+      {% for row in tables.ref_kinds %}
+      <tr>
+        <th scope="row">{{ row.kind }}</th>
+        <td><code>{{ row["written as"] }}</code></td>
+        <td>{{ row.notes }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{{ tail | safe }}
+{% endblock %}

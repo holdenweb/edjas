@@ -1,0 +1,17 @@
+# EDJAS spec for the Welsh Government local authority revenue outturn.
+#
+# This workbook follows the GSS pattern: a cover sheet of metadata, a contents sheet, a
+# notes sheet, then one table per sheet. Table_1 is a full revenue account -- indented
+# service line items rolling up through "All county and county borough council
+# expenditure", "Gross revenue expenditure", "Net revenue expenditure" and "Budget
+# requirement" to "Council tax requirement", with "of which:" breakdowns.
+#
+# The value columns are deliberately mixed: two £ million columns, a change, a
+# percentage and a £-per-head figure, which the ledger template formats appropriately.
+[extract]
+title    = "'Cover_sheet'!A1"
+subtitle = "'Table_1'!A1"
+contact  = "'Cover_sheet'!A7"
+contents = "['Table_of_contents'!A2:B9 | records]"
+header   = "['Table_1'!A3:F3]"
+rows     = "['Table_1'!A4:F31]"

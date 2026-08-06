@@ -1,0 +1,14 @@
+# EDJAS spec for HM Treasury Country and Regional Analysis, Table B.1 (England).
+#
+# A COFOG-classified expenditure ledger: ten numbered function headings ("1. General
+# public services" ... "10. Social protection") each heading a run of numbered
+# sub-function line items, some with nested "of which:" detail, and each closed by a
+# "Total <function>" subtotal, ending at "Total Expenditure on Services in England".
+#
+# The ledger body is rows 5-124; rows 125 onwards are footnotes. Nil cells hold "-",
+# which the template passes through rather than formatting as a number.
+[extract]
+title  = "'B.1'!A1"
+unit   = "'B.1'!F2"
+header = "['B.1'!A4:F4]"
+rows   = "['B.1'!A5:F124]"

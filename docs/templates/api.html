@@ -1,0 +1,15 @@
+{# Signatures and docstrings read by introspection, so they cannot drift from the code. #}
+{% extends "site.html" %}
+
+{% block main %}
+<h1>{{ page.title }}</h1>
+{{ content | safe }}
+
+{% for entry in api %}
+<section id="api-{{ entry.name }}">
+  <h2><code>{{ entry.name }}</code></h2>
+  <pre class="signature"><code>{{ entry.signature }}</code></pre>
+  <pre class="docstring">{{ entry.doc }}</pre>
+</section>
+{% endfor %}
+{% endblock %}

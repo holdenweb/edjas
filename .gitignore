@@ -132,3 +132,6 @@ dist/
 
 # Wing IDE remote-debugger stub (dev-only, not part of the package)
 wingdbstub.py
+
+# Documentation-site build output
+docs/_site/

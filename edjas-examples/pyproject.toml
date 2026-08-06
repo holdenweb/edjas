@@ -1,0 +1,48 @@
+[project]
+name = "edjas-examples"
+version = "0.1.0"
+description = "Worked examples for EDJAS: seven real UK-government workbooks, extraction specs and HTML report templates"
+authors = [
+    { name = "Steve Holden", email = "steve@holdenweb.com" },
+]
+license = "MIT"
+license-files = ["LICENSE"]
+readme = "README.md"
+requires-python = ">=3.12"
+keywords = ["edjas", "spreadsheet", "excel", "xlsx", "reporting", "examples", "jinja2"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Office/Business :: Financial :: Spreadsheet",
+]
+# The bundled workbooks are UK public-sector statistics redistributed unmodified under
+# the Open Government Licence v3.0 -- see edjas_examples/ATTRIBUTION.md, shipped in the
+# package. The code is MIT like EDJAS itself.
+dependencies = [
+    "edjas>=0.7.3",
+    "jinja2>=3",
+]
+
+[project.scripts]
+edjas-examples = "edjas_examples:main"
+
+# During development inside this repository's uv workspace, `edjas` resolves to the
+# sibling root package; from PyPI it resolves normally.
+[tool.uv.sources]
+edjas = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/edjas_examples"]
+
+[tool.hatch.build.targets.sdist]
+# rendered/ holds committed showcase output for repository browsing; installs regenerate
+# reports with the `edjas-examples` command, so neither artifact should ship it.
+exclude = ["/rendered"]

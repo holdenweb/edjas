@@ -1,0 +1,14 @@
+{# Command-line help, captured from the commands themselves. #}
+{% extends "site.html" %}
+
+{% block main %}
+<h1>{{ page.title }}</h1>
+{{ content | safe }}
+
+{% for entry in cli %}
+<section id="cli-{{ entry.command }}">
+  <h2><code>{{ entry.command }}</code></h2>
+  <pre class="help">{{ entry.help }}</pre>
+</section>
+{% endfor %}
+{% endblock %}

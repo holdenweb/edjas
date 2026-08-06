@@ -1,0 +1,19 @@
+{# The four diagrams, inlined. Each SVG has had its ids namespaced and its CSS selectors
+   scoped to its own root id, because inline SVG styles are document-scoped and these
+   four share class names with differing values. #}
+{% extends "site.html" %}
+
+{% block main %}
+<h1>{{ page.title }}</h1>
+{{ content | safe }}
+
+{% for diagram in diagrams %}
+<section id="{{ diagram.slug }}">
+  <h2>{{ diagram.title }}</h2>
+  <figure class="diagram">
+    {{ diagram.svg | safe }}
+    {% if diagram.desc %}<figcaption>{{ diagram.desc }}</figcaption>{% endif %}
+  </figure>
+</section>
+{% endfor %}
+{% endblock %}

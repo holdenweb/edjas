@@ -1,0 +1,108 @@
+# The site's page manifest.
+#
+# Each page names the files it is composed from. Several of those live outside docs/ --
+# the companion package's README and ATTRIBUTION.md, the example specs' comment headers --
+# because the site composes canonical files rather than copying them. A part may be
+# demoted (its headings shifted down, so it nests under the host page), have its own H1
+# skipped, or be included verbatim as a fenced code block.
+#
+# Nav order is the order below. The seven gallery pages are generated from
+# edjas_examples.EXAMPLES rather than listed, so a new example cannot be forgotten.
+
+[[page]]
+url = "index.html"
+title = "Extract data in JSON from any spreadsheet"
+description = "EDJAS reads data out of spreadsheets into JSON and readable reports, without ever modifying the workbook."
+template = "home.html"
+nav = "Home"
+parts = [{ file = "content/index.md" }]
+
+[[page]]
+url = "why.html"
+title = "Why EDJAS"
+description = "The case for describing an extraction in a file beside the spreadsheet rather than inside it."
+nav = "Why"
+parts = [
+  { file = "content/why-lead.md" },
+  { file = "../edjas-examples/README.md", skip_first_heading = true },
+]
+
+[[page]]
+url = "start.html"
+title = "Getting started"
+description = "Install EDJAS, write your first specification file, and turn a spreadsheet into JSON and an HTML report."
+nav = "Get started"
+parts = [
+  { file = "content/start.md" },
+  { file = "../examples/example.toml", as = "code", lang = "toml" },
+  { file = "content/start-tail.md" },
+]
+
+[[page]]
+url = "gallery/index.html"
+title = "Gallery"
+description = "Seven real, unmodified UK government spreadsheets, and the reports EDJAS produces from them."
+template = "gallery.html"
+nav = "Gallery"
+parts = [{ file = "content/gallery/index.md" }]
+
+[[page]]
+url = "reference/spec-language.html"
+title = "The specification language"
+description = "Extraction expressions: the three forms, the kinds of reference, quoting, pipelines and formula cells."
+template = "spec-language.html"
+data = ["tables"]
+nav = "Reference"
+parts = [{ file = "content/reference/spec-language.md" }]
+tail_parts = [{ file = "content/reference/spec-language-tail.md" }]
+
+[[page]]
+url = "reference/functions.html"
+title = "Built-in functions"
+description = "Every function in the EDJAS pipeline registry, read from the registry itself."
+template = "functions.html"
+data = ["functions"]
+parts = [{ file = "content/reference/functions-lead.md" }]
+nav_group = "reference/spec-language.html"
+
+[[page]]
+url = "reference/api.html"
+title = "Python API"
+description = "read_spec, render_report and json_default, with signatures read by introspection."
+template = "api.html"
+data = ["api"]
+parts = [{ file = "content/reference/api-lead.md" }]
+nav_group = "reference/spec-language.html"
+
+[[page]]
+url = "reference/cli.html"
+title = "Command line"
+description = "The edjas and edjas-examples commands."
+template = "cli.html"
+data = ["cli"]
+parts = [{ file = "content/reference/cli-lead.md" }]
+nav_group = "reference/spec-language.html"
+
+[[page]]
+url = "architecture.html"
+title = "How EDJAS works"
+description = "Four diagrams, zooming in a level at a time from the setting to the code."
+template = "architecture.html"
+nav = "Architecture"
+parts = [{ file = "content/architecture.md" }]
+
+[[page]]
+url = "colophon.html"
+title = "Colophon"
+description = "Where the example data comes from, its licence, and how this site was built."
+nav = "Colophon"
+parts = [
+  { file = "content/colophon-lead.md" },
+  { file = "../edjas-examples/src/edjas_examples/ATTRIBUTION.md", skip_first_heading = true },
+  { file = "content/colophon-build.md" },
+]
+
+[gallery]
+url_pattern = "gallery/{name}.html"
+template = "example.html"
+notes_dir = "content/gallery"

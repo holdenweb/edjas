@@ -28,9 +28,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Rendering extracted data into HTML reports (edjas.report.render_report). Core EDJAS
-# never imports Jinja2; install this extra to use the reporting demo:  pip install edjas[demo]
-demo = ["jinja2>=3"]
+# The full reporting demo: Jinja2 for edjas.report.render_report, plus the companion
+# edjas-examples package (seven real UK-government workbooks, specs and templates, and
+# the `edjas-examples` command). Core EDJAS never imports either:  pip install edjas[demo]
+#
+# RELEASE ORDER: edjas-examples must be published to PyPI BEFORE (or together with) any
+# edjas release carrying this extra, or `pip install edjas[demo]` fails to resolve.
+# A plain `uv build` at the workspace root builds ONLY edjas; build the companion with
+# `uv build --package edjas-examples`.
+demo = ["jinja2>=3", "edjas-examples"]
 
 [build-system]
 requires = ["hatchling"]
@@ -39,12 +45,38 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/edjas"]
 
+[tool.hatch.build.targets.sdist]
+# The core sdist must not carry the companion package's tree (workbooks, templates,
+# rendered reports) -- that data ships only in the separate edjas-examples distribution.
+# /docs is the documentation-site source and output; it is repo furniture, not a package.
+exclude = ["/edjas-examples", "/docs", "/uv.lock", "/.claude"]
+
 [dependency-groups]
-dev = ["pytest>=8", "jinja2>=3"]  # jinja2 exercises the optional reporting demo in tests
+# jinja2 + edjas-examples exercise the optional reporting demo in tests; edjas-examples
+# resolves to the workspace member below during development.
+dev = ["pytest>=8", "jinja2>=3", "edjas-examples"]
+# Building the documentation site (docs/build_site.py). These are development-only
+# dependency groups, never wheel metadata, so an installing user is unaffected: the
+# published dependency footprint stays openpyxl alone.
+docs = ["markdown>=3.6", "jinja2>=3", "edjas-examples"]
+
+[tool.uv]
+default-groups = ["dev", "docs"]
+
+[tool.uv.workspace]
+members = ["edjas-examples"]
+
+[tool.uv.sources]
+edjas-examples = { workspace = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+pythonpath = ["docs"]  # lets the tests import the site generator, docs/build_site.py
 
 [project.scripts]
 edjas = "edjas:main"
+
+[project.urls]
+Homepage = "https://github.com/holdenweb/edjas"
+Source = "https://github.com/holdenweb/edjas"

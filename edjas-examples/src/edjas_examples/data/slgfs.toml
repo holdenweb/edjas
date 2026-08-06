@@ -1,0 +1,14 @@
+# EDJAS spec for the Scottish Local Government Finance Statistics ledger.
+#
+# The 'Scotland' sheet is a revenue account: subservice line items grouped into
+# categories, each closed by a "Total ..." subtotal, down to the grand total
+# "All Services (GF + HRA)". The same block is also a named Excel Table (Table3), so
+# `[Table3]` would resolve to exactly this range too.
+#
+# The report renders `header` as the column titles and `rows` as the ledger body; the
+# template classifies each row (line item vs "Total ..." subtotal) for styling.
+[extract]
+title  = "'Scotland'!A1"
+region = "'Scotland'!A2"
+header = "['Scotland'!A6:D6]"
+rows   = "['Scotland'!A7:D89]"

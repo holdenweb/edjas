@@ -22,7 +22,13 @@
   th, td { border: 1px solid var(--rule); padding: .4rem .6rem; text-align: left; vertical-align: top; }
   thead th { background: #f0eaf9; position: sticky; top: 0; }
   tbody tr:nth-child(even) { background: rgba(108, 46, 185, .05); }
-  td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  /* hierarchical ledger (statement of accounts) */
+  .ledger th.rowlabel { text-align: left; font-weight: 400; }
+  .ledger tr.line th.rowlabel { padding-left: 1.5rem; }
+  .ledger tr.subtotal th.rowlabel, .ledger tr.subtotal td { font-weight: 700; border-top: 2px solid var(--accent); }
+  .ledger tr.section th { background: #f0eaf9; font-weight: 700; text-align: left; padding-top: .6rem; }
+  .ledger tbody tr:nth-child(even) { background: transparent; }
   a { color: var(--accent); }
   footer { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid #ddd; color: #666; font-size: .85rem; }
   footer p { margin: .35rem 0; }
@@ -31,6 +37,7 @@
     body { background: #14121a; color: #e6e1ef; }
     .meta, footer { color: #a9a2b8; }
     thead th { background: #241d33; }
+    .ledger tr.section th { background: #241d33; }
     footer { border-top-color: #3a3444; }
   }
 </style>

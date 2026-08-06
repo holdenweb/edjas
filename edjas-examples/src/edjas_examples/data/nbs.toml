@@ -1,0 +1,16 @@
+# EDJAS spec for the ONS UK National Balance Sheet reference tables.
+#
+# This is the demonstration of scale: a 500 KB workbook of 19 sheets, whose numbered
+# sheets are ~50-column time-series matrices and whose 216 Excel Tables are
+# auto-generated fragments (Table1, Table2, ...) — names too meaningless to reference.
+# So the spec instead carves out the readable headline statement from 'Table A' by
+# coordinates: net worth at the start of 2024, by institutional sector and asset class,
+# ending in the "Total economy" roll-up. Column headings keep the workbook's glued
+# footnote markers (e.g. "Dwellings2") — fidelity by default.
+[extract]
+title    = "'Contents'!B5"
+source   = "'Contents'!B6"
+subtitle = "'Table A'!B1"
+contents = "['Contents'!B9:C26 | records]"
+header   = "['Table A'!B6:G6]"
+rows     = "['Table A'!B8:G19]"

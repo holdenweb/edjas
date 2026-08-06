@@ -1,0 +1,12 @@
+# The documentation site extracting itself.
+#
+# docs/site.xlsx holds the site's editorial tables; this specification pulls them out at
+# build time, exactly as any other EDJAS specification would. The named ranges come from
+# the workbook, so the ranges below survive a change of layout.
+#
+# Regenerate the workbook with:  python scripts/create_site_workbook.py
+[extract]
+gallery   = "[GalleryTable | records]"
+functions = "[FunctionsTable | records]"
+forms     = "[FormsTable | records]"
+ref_kinds = "[RefKindsTable | records]"

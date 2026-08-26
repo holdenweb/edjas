@@ -58,7 +58,9 @@ dev = ["pytest>=8", "jinja2>=3", "edjas-examples"]
 # Building the documentation site (docs/build_site.py). These are development-only
 # dependency groups, never wheel metadata, so an installing user is unaffected: the
 # published dependency footprint stays openpyxl alone.
-docs = ["markdown>=3.6", "jinja2>=3", "edjas-examples"]
+# linkchecker verifies the built site's links; it is a docs-time tool, and would
+# otherwise put an HTTP client, a DNS resolver and an HTML parser into every install.
+docs = ["markdown>=3.6", "jinja2>=3", "edjas-examples", "linkchecker>=10.6.0"]
 
 [tool.uv]
 default-groups = ["dev", "docs"]

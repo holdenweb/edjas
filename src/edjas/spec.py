@@ -18,9 +18,24 @@ import tomllib
 import openpyxl
 
 from . import functions as _functions
+from . import ods as _ods
 from .read_params import evaluate
 
-__all__ = ["load_spec", "read_spec"]
+__all__ = ["load_spec", "read_spec", "open_workbook"]
+
+
+def open_workbook(spreadsheet):
+    """Open ``spreadsheet`` for reading, whatever spreadsheet format it is in.
+
+    An OpenDocument file is parsed by :mod:`edjas.ods` and presented as an openpyxl
+    workbook, so the rest of EDJAS never needs to know which format it came from.
+    Anything else is handed to openpyxl, with ``data_only=True`` so that a formula cell
+    yields the value the application cached rather than the formula text. A workbook
+    that has never been recalculated has no cache, so such a cell reads as None.
+    """
+    if _ods.is_ods(spreadsheet):
+        return _ods.load_workbook(spreadsheet)
+    return openpyxl.load_workbook(spreadsheet, data_only=True)
 
 
 def load_spec(path):
@@ -36,14 +51,13 @@ def load_spec(path):
 def read_spec(spreadsheet, spec, functions=None):
     """Extract data from ``spreadsheet`` as directed by the TOML ``spec`` file.
 
-    ``functions`` optionally adds to (or overrides) the built-in registry. The
-    spreadsheet is opened read-only and never modified.
+    ``spreadsheet`` may be an Excel workbook or an OpenDocument (``.ods``) one; the
+    same expressions work against either. ``functions`` optionally adds to (or
+    overrides) the built-in registry. The spreadsheet is opened read-only and never
+    modified.
     """
     mapping = load_spec(spec)
-    # data_only=True yields the last value Excel cached for a formula cell, so
-    # consumers get computed results rather than the formula text. A workbook that
-    # has never been recalculated in Excel has no cache, so such cells read as None.
-    workbook = openpyxl.load_workbook(spreadsheet, data_only=True)
+    workbook = open_workbook(spreadsheet)
     registry = _functions.resolve(functions)
     result = {}
     for key, expr in mapping.items():

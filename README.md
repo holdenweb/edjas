@@ -19,6 +19,10 @@ workbook, you write a small **specification file** — a TOML document — descr
 extract. One spec can serve many workbooks, and one workbook can have many specs, each
 tailored to a different audience.
 
+Excel workbooks (`.xlsx`) and OpenDocument spreadsheets (`.ods`) are both read, using the
+same expressions — which matters for public-sector data, where whole publications are
+released in ODS and nothing else. Neither format needs an extra dependency.
+
 ```
 pip install edjas
 ```
@@ -83,6 +87,17 @@ From the command line — pass the spreadsheet and the spec; JSON goes to standa
 ```
 edjas data.xlsx report.toml
 ```
+
+To find out what a workbook offers before writing a spec, ask it:
+
+```
+edjas data.xlsx --list-names
+```
+
+That lists the named ranges and, sheet by sheet, the Excel Tables, with the shape of
+each and the extraction form that fits it. Names that cannot be used as references —
+those whose cells were deleted, leaving Excel's `#REF!`, and those holding a constant
+rather than a range — are counted with the reason; `--verbose` lists them individually.
 
 As a library, `read_spec` returns the extracted data as a Python dict. Pass
 `functions={...}` to add your own functions to (or override) the built-ins; each receives

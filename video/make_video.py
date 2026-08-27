@@ -198,9 +198,12 @@ TEMPLATE = r"""<!doctype html>
   table.dense th { height:17px; font-size:9px; width:26px; }
   .sheet th { background:#eee9f5; color:#655c78; font-weight:600; font-size:12px;
               border:1px solid var(--rule); width:34px; height:26px; }
+  /* Highlighted cells and lifted rows are painted from t by seek(), not by a CSS
+     transition.  A transition runs on the wall clock, which makes the frame at a given t
+     depend on how long ago the class changed -- the one thing this animation must never
+     do, since every check and every captured frame assumes t is the whole story. */
   .sheet td { border:1px solid var(--rule); padding:3px 7px; min-width:58px; height:26px;
-              white-space:nowrap; transition:background .35s, box-shadow .35s; }
-  .sheet td.lit { box-shadow:inset 0 0 0 3px var(--lc); background:color-mix(in srgb,var(--lc) 12%,#fff); }
+              white-space:nowrap; }
   /* a name belongs to the workbook, so it is drawn as a badge attached to its range;
      an address belongs to the specification, so it is drawn as a typed token */
   #labels .rbox { position:absolute; border-radius:3px; outline-offset:1px; }
@@ -223,10 +226,9 @@ TEMPLATE = r"""<!doctype html>
   #spec .hdr { color:#8a7fa6; margin-bottom:8px; }
   /* no transform here: the flyers are measured against these boxes, and a scaled row would
      make every key start its journey three pixels away from where it appears to be */
-  .srow { padding:5px 8px; border-radius:6px; transition:all .4s; white-space:nowrap; }
+  .srow { padding:5px 8px; border-radius:6px; white-space:nowrap; }
   .srow .k { color:var(--c); font-weight:700; }
   .srow .v { color:#3d3550; }
-  .srow.lift { background:#fff; box-shadow:0 8px 26px rgba(0,0,0,.22); outline:2px solid var(--c); }
   /* an <svg> is a replaced element: inset:0 alone leaves it at its intrinsic 300x150,
      which silently clips every thread. It needs real dimensions. */
   #threads { position:absolute; inset:0; width:1280px; height:720px; pointer-events:none; }
@@ -443,9 +445,9 @@ const T = {
   /* the specification, arriving from the left */
   specAt: 5.0, specFor: 2.2,
   /* the rows lifting one by one, each bringing its own reference with it */
-  liftAt: 8.4, liftPer: 0.35, chipFor: 0.8,
+  liftAt: 8.4, liftPer: 0.35, liftFor: 0.4, chipFor: 0.8,
   /* threads: staggered starts, a shared arrival, and the fraction at which cells light */
-  threadAt: 12.0, threadPer: 0.4, threadTo: 17.5, threadLit: 0.92,
+  threadAt: 12.0, threadPer: 0.4, threadTo: 17.5, threadLit: 0.85, litOutFor: 0.35,
   /* the morph: grow, strip everything else away, fly, hand over */
   morphAt: 21.0, growFor: 1.6, padFor: 0.9, chromeGone: 22.4,
   stripLag: 0.4, stripFor: 1.6,
@@ -495,10 +497,14 @@ function seek(t){
   spec.style.opacity = specIn*(1-strip);
   spec.style.transform = `translateX(${(specIn-1)*40}px)`;
 
-  /* the three rows lift and take colour */
+  /* the three rows lift and take colour, one after another */
   KEYS.forEach((k,i)=>{
-    document.getElementById('s'+k).classList.toggle(
-      'lift', t>T.liftAt+i*T.liftPer && t<T.chromeGone);
+    const at=T.liftAt+i*T.liftPer;
+    const up=ph(t,at,at+T.liftFor)*(1-ph(t,T.chromeGone-T.liftFor,T.chromeGone));
+    const row=document.getElementById('s'+k);
+    row.style.background = up ? `rgba(255,255,255,${up})` : '';
+    row.style.boxShadow  = up ? `0 ${8*up}px ${26*up}px rgba(0,0,0,${0.22*up})` : '';
+    row.style.outline    = up ? `${2*up}px solid ${D.colours[k]}` : '';
   });
 
   /* threads draw with staggered starts and a shared arrival, then the cells light */
@@ -508,13 +514,16 @@ function seek(t){
     const drawn=ph(t, T.threadAt+i*T.threadPer, T.threadTo);
     p.style.strokeDashoffset = len*(1-drawn);
     p.style.opacity = 1-ph(t,T.morphAt,T.chromeGone);
+    /* the cells come up over the last of the thread's draw, and go out with the sheet */
+    const lit=clamp((drawn-T.threadLit)/(1-T.threadLit))
+              *(1-ph(t,T.litTo-T.litOutFor,T.litTo));
     const [tl,br]=D.ranges[k].split(':');
     const [c1,r1]=[tl[0],+tl.slice(1)], [c2,r2]=[br[0],+br.slice(1)];
     for(let c=c1.charCodeAt(0);c<=c2.charCodeAt(0);c++)
       for(let r=r1;r<=r2;r++){
         const cell=document.getElementById('c'+String.fromCharCode(c)+r); if(!cell) continue;
-        cell.style.setProperty('--lc',D.colours[k]);
-        cell.classList.toggle('lit', drawn>T.threadLit && t<T.litTo);
+        cell.style.boxShadow = lit ? `inset 0 0 0 ${3*lit}px ${D.colours[k]}` : '';
+        cell.style.background = lit ? mix('#ffffff',D.colours[k],0.12*lit) : '';
       }
   });
 

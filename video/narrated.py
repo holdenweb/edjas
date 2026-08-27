@@ -26,39 +26,112 @@ from make_video import COLOURS, Timeline, reference, resolve
 
 HERE = Path(__file__).resolve().parent
 
-# The thirty-second script, verbatim: the beat it cues, the second it is spoken, the
-# animation it calls for, and the words.  Retiming the video means retiming the script,
-# which is the right way round when the words come first and the pictures follow.
-SCRIPT = [
-    ("sheet", 0.0, "spreadsheet fades in",
+# The scripts, verbatim.  Each line gives the beat it cues, **how long that beat lasts**,
+# the animation it calls for, and the words.
+#
+# Durations rather than clock times, because a duration is what you can actually measure:
+# time a recorded line with a stopwatch, type the number in, and everything after it moves
+# out of the way.  Clock times would mean renumbering the rest of the script to lengthen one
+# sentence, which is the thing that stops anybody retiming anything.
+SHORT = [
+    ("sheet", 2.0, "spreadsheet fades in",
      "Here's an example spreadsheet,"),
     ("names", 2.0, "labels appear",
      "with a couple of named ranges."),
-    ("spec", 4.0, "specifications fade in",
+    ("spec", 6.0, "specifications fade in",
      "EDJAS lets you describe and name the data you want. For example"),
-    ("title", 10.0, "title row highlights and begins snaking towards the spreadsheet",
+    ("title", 1.0, "title row highlights and begins snaking towards the spreadsheet",
      "a single cell"),
-    ("sales", 11.0, "sales row highlights and begins snaking towards the spreadsheet",
+    ("sales", 1.0, "sales row highlights and begins snaking towards the spreadsheet",
      "a columnar table"),
-    ("hours", 12.0, "hours row highlights and begins snaking towards the spreadsheet",
+    ("hours", 2.0, "hours row highlights and begins snaking towards the spreadsheet",
      "or a set of keys and values"),
-    ("hold", 14.0, "all three animated threads reach their destination ranges, "
+    ("hold", 3.0, "all three animated threads reach their destination ranges, "
      "which highlight",
      "Your spreadsheet is never modified."),
-    ("strip", 17.0, "background to specification and spreadsheet begins to fade, "
+    ("strip", 2.0, "background to specification and spreadsheet begins to fade, "
      "data and keys are surrounded by an outline",
      "The names and values"),
-    ("stack", 19.0, "the data items are stacked vertically, and the labels are vertically "
+    ("stack", 3.0, "the data items are stacked vertically, and the labels are vertically "
      "aligned with the top of the relevant data item",
      "are packaged into a JSON data set."),
-    ("flow", 22.0, "the outlines fade away, the text shrinks, and the remainder of the "
+    ("flow", 4.0, "the outlines fade away, the text shrinks, and the remainder of the "
      "JSON appears",
      "Almost everything can consume JSON,"),
-    ("box", 26.0, "the JSON document shrinks to a box labelled JSON, and the API, report, "
+    ("box", 4.0, "the JSON document shrinks to a box labelled JSON, and the API, report, "
      "database, dashboard and web site icons appear over it and zoom out into position",
      "turning your spreadsheets into valuable data sources."),
 ]
-CUE = {beat: at for beat, at, _, _ in SCRIPT}
+
+# The long cut opens on the problem rather than on the example, spends real time on the
+# specification language, and names each destination as its icon arrives.  Two liberties,
+# both deliberate: "Almost everything can consume JSON, including APIs," is split at its
+# comma, because the API icon arrives on the second half; and "including named ranges and
+# off-sheet references" is given an animation of its own -- the badges the sentence is about
+# swell while the threads are still crossing -- since the script leaves it to the words.
+LONG = [
+    ("nightmare", 4.0, "a crowded government workbook fills the frame",
+     "Extracting data from spreadsheets can be a nightmare."),
+    ("promise", 5.0, "the crowd holds, then cuts away",
+     "Now there's a way to get just what you want from even the most complex designs."),
+    ("sheet", 2.5, "spreadsheet fades in",
+     "Here's an example spreadsheet,"),
+    ("names", 2.5, "labels appear",
+     "with a couple of named ranges."),
+    ("spec", 7.0, "specifications fade in, a line at a time",
+     "EDJAS uses a simple language to let you describe and name the data you want. "
+     "That might be"),
+    ("title", 1.5, "title row highlights and begins snaking towards the spreadsheet",
+     "a single cell"),
+    ("sales", 1.5, "sales row highlights and begins snaking towards the spreadsheet",
+     "a columnar table"),
+    ("hours", 2.0, "hours row highlights and begins snaking towards the spreadsheet",
+     "or a set of keys and values"),
+    ("conventions", 3.5, "the threads carry on crossing",
+     "using exactly the same conventions you use in your spreadsheets,"),
+    ("offsheet", 3.5, "the range badges and the cell address swell",
+     "including named ranges and off-sheet references."),
+    ("hold", 3.5, "all three animated threads reach their destination ranges, "
+     "which highlight",
+     "Your spreadsheet is never modified."),
+    ("strip", 3.5, "background to specification and spreadsheet begins to fade, "
+     "data and keys are surrounded by an outline",
+     "Each name is then attached to the specified data."),
+    ("stack", 4.0, "the data items are stacked vertically, and the labels are vertically "
+     "aligned with the top of the relevant data item",
+     "are packaged into a JSON data set."),
+    ("flow", 4.5, "the outlines fade away, the text shrinks, and the remainder of the "
+     "JSON appears",
+     "Almost everything can consume JSON,"),
+    ("apis", 2.0, "the JSON document shrinks to a box labelled JSON, and the API icon "
+     "appears over it and zooms out into position",
+     "including APIs,"),
+    ("reports", 1.6, "the report icon appears over the JSON block and zooms out",
+     "reports"),
+    ("databases", 1.8, "the database icon appears over the JSON block and zooms out",
+     "databases"),
+    ("dashboards", 1.8, "the dashboard icon appears over the JSON block and zooms out",
+     "dashboards and"),
+    ("web", 2.0, "the web site icon appears over the JSON block and zooms out",
+     "web pages"),
+    ("sources", 5.0, "the destinations hold",
+     "This turns your spreadsheets into data sources to drive your business processes."),
+    ("install", 7.0, "an overlay fades in showing sample pip and uv installation commands",
+     "Best of all, it's open source so you can build it into your business processes "
+     "wherever it's needed!"),
+]
+
+INSTALL = ["pip install edjas", "uv add edjas"]
+ICON_CUES = ["apis", "reports", "databases", "dashboards", "web"]
+
+
+def cues(script):
+    """Where each line starts, from how long the ones before it last, and the total runtime."""
+    at, out = 0.0, {}
+    for beat, secs, _, _ in script:
+        out[beat] = round(at, 3)
+        at = round(at + secs, 3)
+    return out, round(at, 3)
 
 
 # API, report, database, dashboard, web site -- in the order the script names them, with the
@@ -79,50 +152,69 @@ ICONS = [
 ]
 
 
-def timeline():
-    """The beats, taken straight off the voiceover's timings.
+def timeline(script):
+    """The beats, taken straight off the script's cues.
 
-    Each anchor is the second the corresponding line is spoken, so retiming the video means
-    retiming the script -- which is the right way round when the words come first.
+    An anchor is the second its line is spoken, so retiming the film means retiming the
+    script -- which is the right way round when the words come first.  Scenes a script does
+    not cue are switched off rather than removed: hasOpener and hasInstall reach seek() as
+    0 and those layers stay at zero opacity throughout, so one animation renders either cut
+    without either carrying the other's machinery.
     """
+    CUE, runtime = cues(script)
     t = Timeline()
-    t.end = 32                                   # 30s of script, and a moment to breathe
+    t.end = round(runtime + 2.0, 3)
 
-    t.sheetAt = CUE["sheet"] + 0.2               # "Here's an example spreadsheet,"
+    # the crowded workbook the long cut opens on, and the cut away from it
+    t.hasOpener = 1 if "nightmare" in CUE else 0
+    t.denseAt = CUE.get("nightmare", 0.0)
+    t.denseFor = 1.2
+    # The two overlap: run them back to back and there is a blank frame between the crowd
+    # leaving and the example arriving, which reads as a fault rather than as a cut.
+    t.denseOutAt = CUE["sheet"] - 1.6 if t.hasOpener else 0.0
+    t.denseOutFor = 1.4
+
+    t.sheetAt = CUE["sheet"] - (1.2 if t.hasOpener else -0.2)
     t.sheetFor = 1.4
 
     t.namesAt = CUE["names"]                     # "with a couple of named ranges."
     t.namesFor = 1.2
 
-    # "EDJAS lets you describe and name the data you want.  For example" runs for six
-    # seconds, so the panel arrives and then names itself a line at a time rather than
-    # landing whole and leaving the screen still while the sentence finishes.
+    # The sentence that explains the whole idea runs six or seven seconds, so the panel
+    # arrives and then names itself a line at a time rather than landing whole and leaving
+    # the screen still while the words finish.  The stagger is whatever fits the gap.
     t.specAt = CUE["spec"]
     t.specFor = 1.0
     t.specRowAt = t.specAt + 0.6
-    t.specRowPer = 1.7
+    t.specRowPer = round((CUE["title"] - t.specRowAt - 0.3) / 3, 3)
     t.specRowFor = 0.9
     t.specRowsTo = t.specRowAt + 2 * t.specRowPer + t.specRowFor
 
     # "a single cell / a columnar table / or a set of keys and values", a row at a time
     t.threadAt = CUE["title"]
-    t.threadPer = CUE["sales"] - CUE["title"]
+    t.threadPer = round(CUE["sales"] - CUE["title"], 3)
     t.threadTo = CUE["hold"]                     # and a shared arrival
     t.liftFor = 0.5                              # a specification row lighting up
     t.litFor = 0.6                               # a range highlighting as its thread lands
 
-    t.stripAt = CUE["strip"]                     # "The names and values"
+    # "including named ranges and off-sheet references" -- so they swell as it is said
+    t.hasEmph = 1 if "offsheet" in CUE else 0
+    t.emphAt = CUE.get("offsheet", 0.0)
+    t.emphFor = 1.0
+
+    t.stripAt = CUE["strip"]
     t.stripFor = 1.4
     t.showAt = t.stripAt - 0.02                  # the flyers take over just before
     t.outlineAt = t.stripAt + 0.3
     t.outlineFor = 0.9
 
     t.stackAt = CUE["stack"]                     # "are packaged into a JSON data set."
-    t.stackFor = 2.6
+    t.stackFor = round(min(2.6, CUE["flow"] - CUE["stack"] - 0.4), 3)
     t.stackTo = t.stackAt + t.stackFor
 
     t.flowAt = CUE["flow"]                       # "Almost everything can consume JSON,"
-    t.flowFor = 2.8
+    t.boxAt = CUE["apis"] if "apis" in CUE else CUE["box"]
+    t.flowFor = round(min(2.8, t.boxAt - t.flowAt - 0.6), 3)
     t.flowTo = t.flowAt + t.flowFor
     t.outlineOutFor = 0.8
     t.synAt = t.flowAt + 0.9                     # the remainder of the JSON arrives
@@ -131,12 +223,15 @@ def timeline():
     t.cardTo = t.cardAt + 1.2
     t.handFor = 0.7                              # flyers out as the real tokens come in
 
-    t.boxAt = CUE["box"]                         # "turning your spreadsheets into..."
     t.boxFor = 1.6
-    t.iconAt = t.boxAt + 0.5
+    t.iconAt = t.boxAt + 0.5                     # only used when the icons are not cued
     t.iconPer = 0.5
     t.iconFor = 1.3
-    t.iconsTo = t.iconAt + (len(ICONS) - 1) * t.iconPer + t.iconFor
+
+    # an overlay of installation commands, on the long cut only
+    t.hasInstall = 1 if "install" in CUE else 0
+    t.installAt = CUE.get("install", 0.0)
+    t.installFor = 1.4
 
     if CUE["hours"] - CUE["sales"] != t.threadPer:
         raise ValueError("the three rows are not evenly spaced in the script; the animation "
@@ -151,21 +246,32 @@ def timeline():
         if getattr(t, later) <= getattr(t, earlier):
             raise ValueError(f"{later} ({getattr(t, later)}s) does not follow "
                              f"{earlier} ({getattr(t, earlier)}s)")
-    if t.iconsTo > t.end:
-        raise ValueError(f"the last icon settles at {t.iconsTo}s, past the end at {t.end}s")
+    last = icon_starts(CUE, t)[-1] + t.iconFor
+    if last > t.end:
+        raise ValueError(f"the last icon settles at {last}s, past the end at {t.end}s")
     return t
 
 
-def subtitles(t):
+def icon_starts(CUE, t):
+    """When each destination arrives: on its own word where the script names them one by
+    one, otherwise on a fixed stagger after the box forms."""
+    if all(cue in CUE for cue in ICON_CUES):
+        return [CUE[cue] for cue in ICON_CUES]
+    return [round(t.iconAt + i * t.iconPer, 3) for i in range(len(ICONS))]
+
+
+def subtitles(script, t):
     """The voiceover, on screen, so the animation can be timed against the words.
 
     Each line runs to the start of the next, which is how the script is written; the last
-    holds to the end.  They are the reason the video exists in this shape, so they are
-    shown by default and switched off from the transport when it is time to film.
+    holds to the end.  They are the reason the film exists in this shape, so they are shown
+    by default and switched off from the transport when it is time to record.
     """
-    lines = [(at, line) for _, at, _, line in SCRIPT]
-    ends = [start for start, _ in lines[1:]] + [t.end]
-    return [[text, start, end] for (start, text), end in zip(lines, ends)]
+    CUE, _ = cues(script)
+    starts = [CUE[beat] for beat, _, _, _ in script]
+    ends = starts[1:] + [t.end]
+    return [[words, start, end]
+            for (_, _, _, words), start, end in zip(script, starts, ends)]
 
 
 def blocks(book, ranges, rows):
@@ -288,18 +394,36 @@ def stack_html(parts):
     return f'<div id="stackInner">{"".join(out)}</div>'
 
 
-def build(show_timeline=False):
+def opener(t):
+    """The wall of real data the long cut opens on, or nothing at all for the short one."""
+    if not t.hasOpener:
+        return "", []
+    from importlib.resources import as_file
+
+    from make_video import dense_grid, opener_workbook
+
+    with as_file(opener_workbook()) as slgfs:
+        return dense_grid(slgfs, "Scotland"), load_workbook(
+            slgfs, read_only=True).sheetnames[:26]
+
+
+def build(script=SHORT, out="narrated.html", show_timeline=False):
     book, spec = HERE / "quarter.xlsx", HERE / "quarter.toml"
-    t = timeline()
+    CUE, _ = cues(script)
+    t = timeline(script)
     data = read_spec(str(book), str(spec))
     rows = tomllib.loads(spec.read_text())["extract"]
     wb = load_workbook(book)
     labels = {k: reference(v) for k, v in rows.items()}
     ranges = {k: resolve(labels[k]["text"], wb) for k in rows}
     parts = blocks(book, ranges, rows)
+    dense, tabs = opener(t)
 
     payload = {
         "grid": sheet_html(book),
+        "dense": dense,
+        "denseTabs": tabs,
+        "install": INSTALL,
         "specRows": "".join(
             f'<div class="srow" id="s{k}" style="--c:{COLOURS[k]}">'
             f'<span class="k">{k}</span> = <span class="v">"{v}"</span></div>'
@@ -311,15 +435,30 @@ def build(show_timeline=False):
         "labels": labels,
         "colours": COLOURS,
         "icons": [[n, dx, dy, d] for n, dx, dy, d in ICONS],
+        "iconAt": icon_starts(CUE, t),
         "T": t.values(),
-        "subtitles": subtitles(t),
+        "subtitles": subtitles(script, t),
     }
     html = TEMPLATE.replace("__PAYLOAD__", json.dumps(payload))
-    (HERE / "narrated.html").write_text(html, encoding="utf-8")
-    print(f"wrote {HERE / 'narrated.html'}")
+    (HERE / out).write_text(html, encoding="utf-8")
+    print(f"wrote {HERE / out}")
     if show_timeline:
         print(t.listing())
     return data
+
+
+def listing(script):
+    """The script as it will be spoken: where each line starts, how long it has, and the
+    words -- the table to hold a stopwatch against while recording."""
+    CUE, runtime = cues(script)
+    out = []
+    for beat, secs, animation, words in script:
+        at = CUE[beat]
+        out.append(f"  {int(at // 60)}:{at % 60:04.1f}  +{secs:<4.1f} {beat:<11} {words}")
+        out.append(f"                          {animation}")
+    out.append(f"\n  {len(script)} lines, {runtime}s spoken "
+               f"({int(runtime // 60)}:{runtime % 60:04.1f})")
+    return "\n".join(out)
 
 
 TEMPLATE = r"""<!doctype html>
@@ -337,6 +476,15 @@ TEMPLATE = r"""<!doctype html>
   .layer { position:absolute; inset:0; }
 
   table.sheet { border-collapse:collapse; font-size:14px; position:absolute; left:500px; top:150px; }
+  table.dense { position:absolute; left:0; top:0; font-size:10px; }
+  table.dense td { min-width:62px; max-width:62px; height:21px; padding:1px 5px;
+                   overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+  table.dense th { height:17px; font-size:9px; width:26px; }
+  #tabs { position:absolute; left:20px; top:660px; display:flex; gap:2px; max-width:1240px;
+          overflow:hidden; }
+  #tabs span { flex:0 0 auto; font-size:11px; padding:3px 9px; background:#eee9f5;
+               border:1px solid var(--rule); border-bottom:none; color:#655c78; }
+  #tabs span.on { background:#fff; font-weight:700; color:var(--ink); }
   .sheet th { background:#eee9f5; color:#655c78; font-weight:600; font-size:12px;
               border:1px solid var(--rule); width:34px; height:26px; }
   .sheet td { border:1px solid var(--rule); padding:3px 7px; min-width:58px; height:26px;
@@ -346,6 +494,7 @@ TEMPLATE = r"""<!doctype html>
   #labels .rbox.name { outline:2px dashed var(--c); }
   #labels .rbox.address { outline:2px solid var(--c); }
   #labels .chip { position:absolute; height:19px; display:flex; align-items:center;
+                  transform-origin:0 50%;
                   padding:0 7px; border-radius:5px; font-size:12px; font-weight:700;
                   white-space:nowrap; }
   #labels .chip.name { background:var(--c); color:#fff; }
@@ -404,6 +553,12 @@ TEMPLATE = r"""<!doctype html>
                stroke-linecap:round; stroke-linejoin:round; }
   #icons .name { font-size:16px; font-weight:600; }
 
+  #install { position:absolute; inset:0; display:grid; place-items:center; opacity:0;
+             background:rgba(255,255,255,.82); }
+  #install .card { background:#1e1a2b; border-radius:14px; padding:26px 40px;
+                   box-shadow:0 20px 60px rgba(0,0,0,.4); display:grid; gap:12px; }
+  #install code { font-family:ui-monospace,Menlo,monospace; font-size:30px; color:#fff; }
+  #install code::before { content:"$ "; color:#8a7fa6; }
   #sub { position:absolute; left:60px; right:60px; bottom:38px; text-align:center;
          font-size:27px; font-weight:600; color:var(--ink); opacity:0; line-height:1.3; }
   #scrub { display:flex; gap:12px; align-items:center; color:#fff; flex:0 0 auto;
@@ -413,6 +568,7 @@ TEMPLATE = r"""<!doctype html>
 </style>
 
 <div id="sizer"><div id="fit"><div id="stage">
+  <div class="layer" id="denseLayer"></div>
   <div class="layer" id="sheetLayer"></div>
   <div class="layer" id="labels"></div>
   <div class="layer"><div id="spec"><div class="hdr">[extract]</div><div id="specRows"></div></div></div>
@@ -421,6 +577,7 @@ TEMPLATE = r"""<!doctype html>
   <div class="layer"><div id="box">JSON</div></div>
   <div class="layer" id="morph"></div>
   <div class="layer" id="icons"></div>
+  <div class="layer" id="install"><div class="card"></div></div>
   <div id="stack"></div>
   <div id="sub"></div>
 </div></div></div>
@@ -440,6 +597,11 @@ document.getElementById('sheetLayer').innerHTML = D.grid;
 document.getElementById('specRows').innerHTML = D.specRows;
 document.getElementById('json').innerHTML = D.json;
 document.getElementById('stack').innerHTML = D.stack;
+document.getElementById('denseLayer').innerHTML = D.dense ? D.dense +
+  '<div id="tabs">' + D.denseTabs.map((n,i)=>
+     `<span class="${i===0?'on':''}">${n}</span>`).join('') + '</div>' : '';
+document.querySelector('#install .card').innerHTML =
+  D.install.map(c=>`<code>${c}</code>`).join('');
 document.getElementById('icons').innerHTML = D.icons.map(([n,,,d])=>
   `<div class="dest"><svg viewBox="0 0 24 24">${d}</svg><span class="name">${n}</span></div>`
 ).join('');
@@ -576,12 +738,22 @@ function seek(t){
   document.getElementById('t').value=t;
   document.getElementById('tv').textContent=t.toFixed(2)+'s';
 
-  /* the workbook, then the names that belong to it, then the specification */
+  /* the crowd the long cut opens on, then the workbook, then the names that belong to it */
   const strip=ph(t,T.stripAt,T.stripAt+T.stripFor);
+  document.getElementById('denseLayer').style.opacity = T.hasOpener
+    ? ph(t,T.denseAt,T.denseAt+T.denseFor)*(1-ph(t,T.denseOutAt,T.denseOutAt+T.denseOutFor))
+    : 0;
   const sheetIn=ph(t,T.sheetAt,T.sheetAt+T.sheetFor)*(1-strip);
   document.getElementById('sheetLayer').style.opacity=sheetIn;
-  document.getElementById('labels').style.opacity=
-    ph(t,T.namesAt,T.namesAt+T.namesFor)*(1-strip);
+  const labels=document.getElementById('labels');
+  labels.style.opacity=ph(t,T.namesAt,T.namesAt+T.namesFor)*(1-strip);
+  /* "including named ranges and off-sheet references" -- so they swell as it is said.
+     Only touched when a script asks for it: even scale(1) promotes the chip to a layer of
+     its own and changes how its text is antialiased, which shows up as a differing frame. */
+  if(T.hasEmph){
+    const swell=1+0.28*ph(t,T.emphAt,T.emphAt+T.emphFor)*(1-strip);
+    [...labels.querySelectorAll('.chip')].forEach(c=>c.style.transform=`scale(${swell})`);
+  }
 
   const specIn=ph(t,T.specAt,T.specAt+T.specFor);
   const spec=document.getElementById('spec');
@@ -642,11 +814,14 @@ function seek(t){
   /* ...which becomes a box, and feeds everything else */
   document.getElementById('box').style.opacity=ph(t,T.boxAt+T.boxFor*0.5,T.boxAt+T.boxFor);
   [...document.querySelectorAll('#icons .dest')].forEach((d,i)=>{
-    const at=T.iconAt+i*T.iconPer, k=ph(t,at,at+T.iconFor);
+    const at=D.iconAt[i], k=ph(t,at,at+T.iconFor);
     const [,dx,dy]=D.icons[i];
     d.style.transform=`translate(-50%,-50%) translate(${dx*k}px,${dy*k}px) scale(${0.25+0.75*k})`;
     d.style.opacity=Math.min(1,k*2.2);
   });
+
+  document.getElementById('install').style.opacity =
+    T.hasInstall ? ph(t,T.installAt,T.installAt+T.installFor) : 0;
 
   const line=SUBS.find(s=>t<s[2]) || SUBS[SUBS.length-1];
   const sub=document.getElementById('sub');
@@ -673,4 +848,10 @@ addEventListener('load',()=>{
 """
 
 if __name__ == "__main__":
-    build(show_timeline="--timeline" in sys.argv)
+    long_cut = "--long" in sys.argv
+    chosen = LONG if long_cut else SHORT
+    if "--script" in sys.argv:
+        print(listing(chosen))
+    build(chosen,
+          out="narrated-long.html" if long_cut else "narrated.html",
+          show_timeline="--timeline" in sys.argv)

@@ -69,6 +69,18 @@ def times(args, end=END):
     return out
 
 
+def page_end(page_name=DEFAULT_PAGE):
+    """How long the animation runs, read out of the page's own timeline."""
+    from playwright.sync_api import sync_playwright
+
+    with sync_playwright() as playwright:
+        browser = chromium(playwright)
+        page = frame(browser, page_name=page_name)
+        end = page.evaluate("T.end")
+        browser.close()
+    return end
+
+
 def capture(wanted, page_name=DEFAULT_PAGE):
     from playwright.sync_api import sync_playwright
 
@@ -110,7 +122,8 @@ if __name__ == "__main__":
         i = argv.index("--page")
         page_name = argv[i + 1]
         argv = argv[:i] + argv[i + 2:]
-    wanted = times(argv, end=32 if "narrated" in page_name else END)
+    # each animation states its own length; ask the page rather than guessing from its name
+    wanted = times(argv, end=page_end(page_name))
     files = capture(wanted, page_name)
     sheet = tile(files, columns=5 if len(files) > 8 else 2,
                  width=400 if len(files) > 8 else 620)

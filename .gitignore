@@ -144,6 +144,7 @@ docs/zensical.toml
 # Animation build output (regenerate with video/make_video.py, video/narrated.py)
 video/introducer.html
 video/narrated.html
+video/narrated-long.html
 video/frames/
 video/contact.png
 

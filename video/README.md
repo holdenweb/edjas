@@ -1,26 +1,57 @@
 # The EDJAS introducers
 
-Two animations, from two programs. `make_video.py` is the original, built shot by shot;
-`narrated.py` is an experiment cut to a written voiceover, which is a different discipline
-and produced a different film. They share the workbook, the specification, the `Timeline`
-class and the checking tools, and nothing else.
+Three films from two programs. `make_video.py` is the original, built shot by shot.
+`narrated.py` is cut to a written voiceover, and renders either the short script or the
+long one — they are the same film with scenes added, so they are one program rather than
+two.
 
-| | length | opens on | how the JSON arrives |
+| | length | opens on | closes on |
 |---|---|---|---|
-| `make_video.py` | ~34s | a wall of government data | the keys and values cross-fade into a rendered block |
-| `narrated.py` | 30s | the example workbook itself | the cells stack, the labels align, then the punctuation fills in around them |
-
-`narrated.py` carries its script in the module docstring, times the beats off it directly,
-and shows the lines as subtitles so the animation can be checked against the words. The
-subtitles switch off from the transport when it is time to film.
+| `make_video.py` | ~34s | a wall of government data | a fan of destinations |
+| `narrated.py` | 30s | the example workbook | five icons round a JSON box |
+| `narrated.py --long` | ~72s | the wall of data, as the problem | the installation commands |
 
 ```
-uv run python video/narrated.py
-uv run --group video python video/check.py --page narrated.html
-uv run --group video python video/contact.py --page narrated.html
+uv run python video/narrated.py                 # -> narrated.html
+uv run python video/narrated.py --long          # -> narrated-long.html
+uv run python video/narrated.py --long --script # the script, with where each line lands
 ```
 
-## make_video.py
+## Retiming a narrated film
+
+The script is the film. `SHORT` and `LONG` in `narrated.py` hold, for each line, **how
+long that line lasts**, the animation it calls for, and the words:
+
+```python
+("hours", 2.0, "hours row highlights and begins snaking towards the spreadsheet",
+ "or a set of keys and values"),
+```
+
+Durations rather than clock times, because a duration is what you can measure. Time a
+recorded line with a stopwatch, type the number in, and **everything after it moves out of
+the way** — where clock times would mean renumbering the rest of the script to lengthen one
+sentence, which is what stops anybody retiming anything.
+
+`--script` prints where every line then lands, which is the table to hold the stopwatch
+against:
+
+```
+  0:21.0  +1.5  title       a single cell
+                            title row highlights and begins snaking towards the spreadsheet
+```
+
+The animation follows. Beats anchor to the cues (`t.threadAt = CUE["title"]`), so moving a
+line moves its picture with it, and the checks in `timeline()` refuse a script the
+animation cannot honour — rows that are no longer evenly spaced, or a specification still
+arriving when the first row is due to light.
+
+Scenes a script does not cue are switched off rather than removed: `SHORT` has no
+`nightmare` line, so `hasOpener` reaches `seek()` as 0 and the crowded-workbook layer stays
+at zero opacity throughout. That is why both cuts come out of one program without either
+carrying the other's machinery — and the short film is unchanged, frame for frame, by the
+long one having been added.
+
+## make_video.py## make_video.py
 
 A ~34-second animation of what EDJAS does, generated from the real package: a crowded
 government workbook, a small specification, three references resolving, and the JSON they

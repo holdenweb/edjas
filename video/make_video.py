@@ -397,7 +397,7 @@ function buildMorph(){
       `<span class="txt"><span class="q l">"</span>${key}<span class="q r">"</span></span>`;
     morph.appendChild(kf);
     FLY.push({el:kf, txt:kf.querySelector('.txt'), pad:kf.querySelector('.pad'),
-              slot:document.getElementById('jkq-'+key), key, grow:1.70, hand:0.55,
+              slot:document.getElementById('jkq-'+key), key, grow:1.70, hand:T.handKey,
               quotes:[...kf.querySelectorAll('.q')], sx:0, sy:(KEYS.indexOf(key)-1)*26,
               x0:ks.cx, y0:ks.cy, x1:kd.cx, y1:kd.cy, land:kd.w/ks.w,
               from:c, to:mix(c,'#ffffff',0.28)});
@@ -414,7 +414,7 @@ function buildMorph(){
     morph.appendChild(vf);
     const vdEl=document.getElementById('jvb-'+key), vd=box(vdEl); vd.el=vdEl;
     FLY.push({el:vf, txt:vf, pad:vf.querySelector('.pad'), slot:vd.el, key, grow:1.14,
-              hand:0.40, quotes:[], sx:(KEYS.indexOf(key)-1)*18, sy:0,
+              hand:T.handBlock, quotes:[], sx:(KEYS.indexOf(key)-1)*18, sy:0,
               x0:x+w/2, y0:y+h/2, x1:vd.cx, y1:vd.cy, land:Math.min(vd.w/w, vd.h/h),
               from:'#1c1a22', to:'#e8e2f5'});
   }
@@ -451,19 +451,29 @@ const T = {
   /* the morph: grow, strip everything else away, fly, hand over */
   morphAt: 21.0, growFor: 1.6, padFor: 0.9, chromeGone: 22.4,
   stripLag: 0.4, stripFor: 1.6,
-  flightAt: 23.2, flightTo: 25.4, flightPer: 0.18,
-  cardLag: 0.1, cardTo: 24.2, handLead: 0.1, slotLead: 0.05,
+  flightAt: 23.2, flightTo: 25.4, flightPer: 0.18, padOutFor: 1.0,
+  cardLag: 0.1, cardFor: 0.9, handLead: 0.1, slotLead: 0.05,
+  handKey: 0.55, handBlock: 0.40,
   /* and where the JSON goes next */
   shrinkAt: 26.6, shrinkTo: 29.0,
   fanAt: 27.0, fanFor: 1.0, destAt: 27.2, destFor: 2.0, destPer: 0.22,
   ctaAt: 32.9, ctaTo: 34.1,
 };
-T.showAt  = T.morphAt - 0.02;            /* flyers take over just before anything moves... */
-T.stripAt = T.morphAt + T.stripLag;      /* ...and before the sheet under them starts to go */
-T.stripTo = T.stripAt + T.stripFor;
-T.litTo   = T.stripTo;                   /* lit cells go out as the sheet finishes fading */
-T.padTo   = T.flightAt + 1.0;
-T.cardAt  = T.flightAt + T.cardLag;      /* solid before the first flyer lands on it */
+/* The couplings, in one place and in one direction.  Call derive() after changing anything
+   in T -- from the console as much as from the code -- or these keep their old values and
+   the very relationships the table exists to protect come quietly apart. */
+function derive(){
+  T.showAt  = T.morphAt - 0.02;          /* flyers take over just before anything moves... */
+  T.stripAt = T.morphAt + T.stripLag;    /* ...and before the sheet under them starts to go */
+  T.stripTo = T.stripAt + T.stripFor;
+  T.litTo   = T.stripTo;                 /* lit cells go out as the sheet finishes fading */
+  T.padTo   = T.flightAt + T.padOutFor;
+  T.cardAt  = T.flightAt + T.cardLag;    /* solid before the first flyer lands on it */
+  T.cardTo  = T.cardAt + T.cardFor;
+  T.landsAt = T.flightTo + 2*T.flightPer + T.handBlock;   /* the morph is over here */
+}
+derive();
+window.T = T; window.derive = derive;    /* so the timeline can be tried out in the console */
 
 /* Each caption owns its own window, so the one on screen is simply the first whose window
    has not yet closed; win() keeps it at zero opacity until its moment arrives. */

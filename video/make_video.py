@@ -287,7 +287,6 @@ TEMPLATE = r"""<!doctype html>
 
 <script>
 const D = __PAYLOAD__;
-const END = 35;
 const stage = document.getElementById('stage');
 document.getElementById('sheetLayer').innerHTML = D.grid;
 document.getElementById('denseLayer').innerHTML = D.dense +
@@ -420,13 +419,65 @@ function buildMorph(){
   j.style.opacity=saved[0]; sp.style.transform=saved[1];
 }
 
+/* ---------------------------------------------------------------------------------------
+   The timeline, in one place.  Seconds throughout, and times only -- the geometric
+   magnitudes stay beside the transforms that use them, where they mean something.  The one
+   exception is threadLit, which is a gate expressed as progress rather than as a clock.
+
+   Anything that has to line up with something else is DERIVED from it rather than typed
+   again.  Two numbers that merely happen to agree look independent, and the next person to
+   retime this will move one of them and not the other.  The couplings that matter:
+
+     - the flyers take over an instant BEFORE the sheet beneath them starts to fade,
+       otherwise the handover shows as a gap or as a doubled image;
+     - the cells stop being lit exactly WHEN the sheet has finished fading;
+     - the JSON card is solid BEFORE the first flyer lands on it, or they land on grey;
+     - each JSON slot appears just BEFORE its flyer leaves, never after.
+--------------------------------------------------------------------------------------- */
+const T = {
+  end: 35,
+  /* the crowded opener calms down, and we cut to the clean workbook */
+  cutAt: 3.0, cutFor: 1.4,
+  /* the named ranges, which are the workbook's own property */
+  namesAt: 4.6, namesFor: 1.0,
+  /* the specification, arriving from the left */
+  specAt: 5.0, specFor: 2.2,
+  /* the rows lifting one by one, each bringing its own reference with it */
+  liftAt: 8.4, liftPer: 0.35, chipFor: 0.8,
+  /* threads: staggered starts, a shared arrival, and the fraction at which cells light */
+  threadAt: 12.0, threadPer: 0.4, threadTo: 17.5, threadLit: 0.92,
+  /* the morph: grow, strip everything else away, fly, hand over */
+  morphAt: 21.0, growFor: 1.6, padFor: 0.9, chromeGone: 22.4,
+  stripLag: 0.4, stripFor: 1.6,
+  flightAt: 23.2, flightTo: 25.4, flightPer: 0.18,
+  cardLag: 0.1, cardTo: 24.2, handLead: 0.1, slotLead: 0.05,
+  /* and where the JSON goes next */
+  shrinkAt: 26.6, shrinkTo: 29.0,
+  fanAt: 27.0, fanFor: 1.0, destAt: 27.2, destFor: 2.0, destPer: 0.22,
+  ctaAt: 32.9, ctaTo: 34.1,
+};
+T.showAt  = T.morphAt - 0.02;            /* flyers take over just before anything moves... */
+T.stripAt = T.morphAt + T.stripLag;      /* ...and before the sheet under them starts to go */
+T.stripTo = T.stripAt + T.stripFor;
+T.litTo   = T.stripTo;                   /* lit cells go out as the sheet finishes fading */
+T.padTo   = T.flightAt + 1.0;
+T.cardAt  = T.flightAt + T.cardLag;      /* solid before the first flyer lands on it */
+
+/* Each caption owns its own window, so the one on screen is simply the first whose window
+   has not yet closed; win() keeps it at zero opacity until its moment arrives. */
+const CAPTIONS = [
+  ['Have you ever had to extract data from a spreadsheet like this?', 0.3, 3.4, 0.5],
+  ['A cell.  A table.  A pair of columns.', 12.5, 20.6, 0.6],
+  ['Your spreadsheet is never modified.', 21.8, 26.4, 0.6],
+  ['JSON goes anywhere.', 28.2, 32.6, 0.6],
+];
 function seek(t){
   document.getElementById('t').value=t;
   document.getElementById('tv').textContent=t.toFixed(2)+'s';
 
-  /* 0-3s opener: a crowded sheet. 3-5s: it calms down and we cut to the clean one. */
-  const clutter=1-ph(t,3.0,4.4);
-  const strip=ph(t,21.4,23.0);                   /* the rest of the detail fades away */
+  /* the crowded opener calms down, and we cut to the clean workbook */
+  const clutter=1-ph(t,T.cutAt,T.cutAt+T.cutFor);
+  const strip=ph(t,T.stripAt,T.stripTo);           /* the rest of the detail fades away */
   document.getElementById('denseLayer').style.opacity = clutter;
   const sheetIn=(1-clutter)*(1-strip);
   document.getElementById('sheetLayer').style.opacity = sheetIn;
@@ -434,93 +485,92 @@ function seek(t){
   /* The names are the workbook's own, so they arrive with the workbook.  The address is not:
      it is what the specification types, so it arrives with the line that types it. */
   document.getElementById('labels').style.opacity = sheetIn;
-  TAGS.forEach((g,i)=>{ g.el.style.opacity =
-    g.kind==='name' ? ph(t,4.6,5.6) : ph(t,8.4+i*0.35,9.2+i*0.35); });
+  TAGS.forEach((g,i)=>{ const at=T.liftAt+i*T.liftPer;
+    g.el.style.opacity = g.kind==='name' ? ph(t,T.namesAt,T.namesAt+T.namesFor)
+                                         : ph(t,at,at+T.chipFor); });
 
-  /* 5-8s: the specification arrives, from the left */
+  /* the specification arrives, from the left */
+  const specIn=ph(t,T.specAt,T.specAt+T.specFor);
   const spec=document.getElementById('spec');
-  spec.style.opacity = ph(t,5,7.2) * (1-strip);
-  spec.style.transform = `translateX(${(ph(t,5,7.2)-1)*40}px)`;
+  spec.style.opacity = specIn*(1-strip);
+  spec.style.transform = `translateX(${(specIn-1)*40}px)`;
 
-  /* 8-12s: the three rows lift and take colour */
+  /* the three rows lift and take colour */
   KEYS.forEach((k,i)=>{
-    document.getElementById('s'+k).classList.toggle('lift', t>8.4+i*0.35 && t<22.4);
+    document.getElementById('s'+k).classList.toggle(
+      'lift', t>T.liftAt+i*T.liftPer && t<T.chromeGone);
   });
 
-  /* 12-18s: threads draw with staggered starts and a shared arrival; 18-21s hold */
+  /* threads draw with staggered starts and a shared arrival, then the cells light */
   KEYS.forEach((k,i)=>{
     const p=document.getElementById('p'+k); if(!p) return;
     const len=p.getTotalLength();
-    const drawn=ph(t, 12+i*0.4, 17.5);
+    const drawn=ph(t, T.threadAt+i*T.threadPer, T.threadTo);
     p.style.strokeDashoffset = len*(1-drawn);
-    p.style.opacity = 1-ph(t,21.0,22.4);
+    p.style.opacity = 1-ph(t,T.morphAt,T.chromeGone);
     const [tl,br]=D.ranges[k].split(':');
     const [c1,r1]=[tl[0],+tl.slice(1)], [c2,r2]=[br[0],+br.slice(1)];
     for(let c=c1.charCodeAt(0);c<=c2.charCodeAt(0);c++)
       for(let r=r1;r<=r2;r++){
         const cell=document.getElementById('c'+String.fromCharCode(c)+r); if(!cell) continue;
         cell.style.setProperty('--lc',D.colours[k]);
-        cell.classList.toggle('lit', drawn>0.92 && t<23);
+        cell.classList.toggle('lit', drawn>T.threadLit && t<T.litTo);
       }
   });
 
-  /* 21-26s: the keys and the values grow, everything else goes, and the two become the JSON */
-  const grow=ph(t,21.0,22.6);
-  document.getElementById('morph').style.opacity = t>=20.98 ? 1 : 0;
+  /* the keys and the values grow, everything else goes, and the two become the JSON */
+  const grow=ph(t,T.morphAt,T.morphAt+T.growFor);
+  document.getElementById('morph').style.opacity = t>=T.showAt ? 1 : 0;
   FLY.forEach(f=>{
-    const i=KEYS.indexOf(f.key);
-    const land=25.4+i*0.18;
-    const m=ph(t, 23.2+i*0.18, land);                   /* the flight */
-    const fade=ph(t, land-0.1, land-0.1+f.hand);        /* and the handover */
+    const skew=KEYS.indexOf(f.key)*T.flightPer, land=T.flightTo+skew;
+    const m=ph(t, T.flightAt+skew, land);                        /* the flight */
+    const fade=ph(t, land-T.handLead, land-T.handLead+f.hand);   /* and the handover */
     const s=(1+(f.grow-1)*grow)+(f.land-f.grow)*m;
     const gx=f.sx*grow, gy=f.sy*grow;                   /* held apart while enlarged... */
     f.el.style.transform=                               /* ...and released into the flight */
       `translate(${gx+(f.x1-f.x0-gx)*m}px,${gy+(f.y1-f.y0-gy)*m}px) scale(${s*(1+0.26*fade)})`;
     f.el.style.opacity = 1-fade;
-    f.pad.style.opacity = ph(t,21.0,21.9)*(1-ph(t,23.2,24.2));
+    f.pad.style.opacity = ph(t,T.morphAt,T.morphAt+T.padFor)*(1-ph(t,T.flightAt,T.padTo));
     f.txt.style.color = mix(f.from, f.to, m);
     f.quotes.forEach(q=>q.style.opacity=m);
-    f.slot.style.opacity = ph(t, land-0.05, land-0.05+f.hand);
+    f.slot.style.opacity = ph(t, land-T.slotLead, land-T.slotLead+f.hand);
   });
   const j=document.getElementById('json');
-  const shrink=ph(t,26.6,29.0);                          /* makes room for the destinations */
-  const appear=ph(t,23.3,24.2);
+  const shrink=ph(t,T.shrinkAt,T.shrinkTo);              /* makes room for the destinations */
+  const appear=ph(t,T.cardAt,T.cardTo);
   j.style.opacity = appear;
   j.style.transform = `translate(-50%,-50%) translateY(${-46*shrink}px) `+
                       `scale(${(0.94+0.06*appear)*(1-0.38*shrink)})`;
 
-  /* 27-30s: where it can go next */
-  document.getElementById('fan').style.opacity = ph(t,27.0,28.0);
+  /* where it can go next */
+  document.getElementById('fan').style.opacity = ph(t,T.fanAt,T.fanAt+T.fanFor);
   [...document.querySelectorAll('#fan .dest')].forEach((d,i)=>{
-    const k=ph(t,27.2+i*0.22,29.2+i*0.22);               /* travel out from the JSON */
+    const at=T.destAt+i*T.destPer;
+    const k=ph(t,at,at+T.destFor);                       /* travel out from the JSON */
     const [,dx,dy]=DESTS[i];
     d.style.transform=`translate(-50%,-50%) translate(${dx*k}px,${dy*k}px) scale(${0.6+0.4*k})`;
     d.style.opacity=k;
   });
 
-  /* captions */
+  const [text,from,to,fade]=CAPTIONS.find(c=>t<c[2]) || CAPTIONS[CAPTIONS.length-1];
   const cap=document.getElementById('caption');
-  let text='', o=0;
-  if(t<3.6){ text='Have you ever had to extract data from a spreadsheet like this?'; o=win(t,0.3,3.4,.5); }
-  else if(t<21.2){ text='A cell.  A table.  A pair of columns.'; o=win(t,12.5,20.6,.6); }
-  else if(t<26.8){ text='Your spreadsheet is never modified.'; o=win(t,21.8,26.4,.6); }
-  else { text='JSON goes anywhere.'; o=win(t,28.2,32.6,.6); }
-  cap.textContent=text; cap.style.opacity=o;
+  cap.textContent=text; cap.style.opacity=win(t,from,to,fade);
 
-  document.getElementById('cta').style.opacity = ph(t,32.9,34.1);
+  document.getElementById('cta').style.opacity = ph(t,T.ctaAt,T.ctaTo);
 }
 window.seek=seek;                       /* exposed for headless frame capture */
 
 /* preview transport */
 let playing=false, t0=0, base=0;
 function frame(ts){ if(!playing) return;
-  const t=base+(ts-t0)/1000; if(t>=END){ seek(END); playing=false; return; }
+  const t=base+(ts-t0)/1000; if(t>=T.end){ seek(T.end); playing=false; return; }
   seek(t); requestAnimationFrame(frame); }
 document.getElementById('play').onclick=()=>{
   playing=!playing; base=+document.getElementById('t').value;
   if(playing) requestAnimationFrame(ts=>{t0=ts; frame(ts);}); };
 document.getElementById('t').oninput=e=>{ playing=false; seek(+e.target.value); };
 
+document.getElementById('t').max=T.end;
 addEventListener('load',()=>{ fit(); buildLabels(); buildThreads(); buildMorph(); seek(0); });
 </script>
 """

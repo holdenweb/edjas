@@ -48,8 +48,9 @@ packages = ["src/edjas"]
 [tool.hatch.build.targets.sdist]
 # The core sdist must not carry the companion package's tree (workbooks, templates,
 # rendered reports) -- that data ships only in the separate edjas-examples distribution.
-# /docs is the documentation-site source and output; it is repo furniture, not a package.
-exclude = ["/edjas-examples", "/docs", "/.github", "/uv.lock", "/.claude"]
+# /docs and /video are repo furniture -- the documentation-site source and the generator
+# for the promotional animation -- and neither is part of the package.
+exclude = ["/edjas-examples", "/docs", "/video", "/.github", "/uv.lock", "/.claude"]
 
 [dependency-groups]
 # jinja2 + edjas-examples exercise the optional reporting demo in tests; edjas-examples
@@ -61,6 +62,10 @@ dev = ["pytest>=8", "jinja2>=3", "edjas-examples"]
 # linkchecker verifies the built site's links; it is a docs-time tool, and would
 # otherwise put an HTTP client, a DNS resolver and an HTML parser into every install.
 docs = ["markdown>=3.6", "jinja2>=3", "edjas-examples", "linkchecker>=10.6.0"]
+# Generating and checking the promotional animation (video/).  Deliberately NOT in
+# default-groups: a headless browser is a heavy install to inflict on every `uv sync`,
+# and nothing else in the repository needs it.
+video = ["playwright>=1.44", "pillow>=10"]
 
 [tool.uv]
 default-groups = ["dev", "docs"]

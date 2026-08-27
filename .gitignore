@@ -135,3 +135,8 @@ wingdbstub.py
 
 # Documentation-site build output
 docs/_site/
+
+# Introducer animation build output (regenerate with video/make_video.py)
+video/introducer.html
+video/frames/
+video/contact.png

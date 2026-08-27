@@ -62,17 +62,12 @@ exclude = [
 # jinja2 + edjas-examples exercise the optional reporting demo in tests; edjas-examples
 # resolves to the workspace member below during development.
 dev = ["pytest>=8", "jinja2>=3", "edjas-examples"]
+
 # Building the documentation site (docs/build_site.py). These are development-only
 # dependency groups, never wheel metadata, so an installing user is unaffected: the
 # published dependency footprint stays openpyxl alone.
 # linkchecker verifies the built site's links; it is a docs-time tool, and would
 # otherwise put an HTTP client, a DNS resolver and an HTML parser into every install.
-
-# Generating and checking the promotional animation (video/).  Deliberately NOT in
-# default-groups: a headless browser is a heavy install to inflict on every `uv sync`,
-# and nothing else in the repository needs it.
-video = ["playwright>=1.44", "pillow>=10"]
-
 # zensical renders docs/md (written by docs/build_md.py) into docs/_zensical. It carries a
 # compiled Rust core, so it is much the heaviest thing in this file -- another reason it
 # belongs in a group and not in `dependencies`, where nothing but openpyxl may appear.
@@ -83,6 +78,11 @@ docs = [
   "linkchecker>=10.6.0",
   "zensical>=0.0.57",
 ]
+
+# Generating and checking the promotional animation (video/).  Deliberately NOT in
+# default-groups: a headless browser is a heavy install to inflict on every `uv sync`,
+# and nothing else in the repository needs it.
+video = ["playwright>=1.44", "pillow>=10"]
 
 [tool.uv]
 default-groups = ["dev", "docs"]

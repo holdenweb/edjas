@@ -50,7 +50,13 @@ packages = ["src/edjas"]
 # rendered reports) -- that data ships only in the separate edjas-examples distribution.
 # /docs and /video are repo furniture -- the documentation-site source and the generator
 # for the promotional animation -- and neither is part of the package.
-exclude = ["/edjas-examples", "/docs", "/video", "/.github", "/uv.lock", "/.claude"]
+# test_docs_site.py goes with /docs: it tests the site generator, which no sdist carries,
+# so shipping it would only ever produce a skip.  The other optional-dependency tests do
+# stay, because edjas-examples and Jinja2 are both installable alongside a core build.
+exclude = [
+    "/edjas-examples", "/docs", "/video", "/.github", "/uv.lock", "/.claude",
+    "/tests/test_docs_site.py",
+]
 
 [dependency-groups]
 # jinja2 + edjas-examples exercise the optional reporting demo in tests; edjas-examples

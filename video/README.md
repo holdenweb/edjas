@@ -44,81 +44,80 @@ spec at build time, not hardcoded.
 
 ## Editing the timeline
 
-Every time in the animation lives in one object, `T`, at the top of the `<script>` in
-`make_video.py`. Seconds throughout. Its entries come in two kinds:
+The timeline is Python, in `timeline()` in `make_video.py`. Every instant and duration is
+named, and each is fixed **either absolutely or against one already fixed**:
 
-  - **the ones you set** — the beats and their durations;
-  - **the ones `derive()` computes** — `showAt`, `stripAt`, `stripTo`, `litTo`, `padTo`,
-    `cardAt`, `cardTo`, `landsAt`. Never write these by hand. They exist so that the
-    relationships which *must* hold cannot be broken by changing one number and forgetting
-    the one that had to agree with it.
-
-**So the rule is: change a beat, then call `derive()`.** In the file that happens on its
-own at load. In the browser console it does not, so say it yourself — otherwise the
-derived values keep their old figures and the couplings come quietly apart.
-
-Suffixes are consistent: `At` is when something starts, `For` how long it takes, `To` when
-it ends, `Per` the stagger between the three keys (or the five destinations), and `Lag` an
-offset from the beat it follows.
-
-### Try it in the browser first
-
-Open `video/introducer.html`, open the console, and move something:
-
-```javascript
-T.threadAt = 10; derive(); seek(11)
+```python
+t.morphAt  = t.threadTo + 3.5                # the hold, after the threads arrive
+t.stripAt  = t.morphAt + 0.4                 # the sheet goes as the flyers take over
+t.flightAt = t.morphAt + t.growFor + 0.6     # only once the growing has finished
 ```
 
-Reload to get back — nothing is saved. This is much the fastest loop: scrub, tweak, scrub
-again, and only edit the file once you know the number you want.
+Two rules make that safe, and both are enforced:
+
+  - **using a point before it is fixed is an error**, so the function reads top to bottom
+    and nothing can refer forwards;
+  - **fixing a point twice is an error**, so a name means one thing.
+
+Between them they rule out cycles by construction, which is why resolving the timeline is
+nothing more than running the function.
+
+### Retiming
+
+Change an anchor and everything hanging off it follows. Moving one number — `t.threadAt`
+from `t.liftTo + 2.5` to `t.liftTo + 0.5` — takes two seconds of dead air out of the middle
+and carries eight later beats and three captions with it, while `ctaAt` and `end` stay
+where they are because they are fixed absolutely rather than relatively.
+
+That is the whole point of the arrangement: **what is relative moves, what is absolute
+pins**. If you want the closing card to land at a particular second regardless of what
+happens earlier, fix it absolutely, as `t.ctaAt` is. If you want it to follow the fan-out,
+fix it against `t.fanAt`.
+
+To see what your edit actually resolved to:
+
+```
+uv run python video/make_video.py --timeline
+```
+
+### What is checked for you
+
+  - **the relationships inside a beat**, because they are written as arithmetic rather than
+    as two numbers that have to agree: the flight cannot start before the growing finishes,
+    the JSON cannot shrink before it has assembled, the lit cells go out exactly as the
+    sheet finishes fading;
+  - **the order of the beats**, which arithmetic cannot guarantee — a negative offset or an
+    over-enthusiastic anchor is refused by name, `threadAt (1.5s) does not follow liftAt
+    (8.4s)`;
+  - **that the closing card ends before the timeline does**;
+  - **captions**, which are anchored to their beats in `captions()` and so cannot be left
+    behind by a retimed beat.
+
+What is *not* checked is whether the result is any good. Nothing knows that three seconds
+of an unchanging picture is too long.
 
 ### The knobs
 
-| Beat | Set these |
-|---|---|
-| The opener, then the cut | `cutAt` 3.0, `cutFor` 1.4 |
-| The named ranges appear | `namesAt` 4.6, `namesFor` 1.0 |
-| The specification slides in | `specAt` 5.0, `specFor` 2.2 |
-| The rows lift, each with its reference | `liftAt` 8.4, `liftPer` 0.35, `liftFor` 0.4, `chipFor` 0.8 |
-| Threads draw, then cells light | `threadAt` 12.0, `threadPer` 0.4, `threadTo` 17.5, `litOutFor` 0.35 |
-| Grow, and strip the rest away | `morphAt` 21.0, `growFor` 1.6, `padFor` 0.9, `chromeGone` 22.4, `stripLag` 0.4, `stripFor` 1.6 |
-| The flight, and the handover | `flightAt` 23.2, `flightTo` 25.4, `flightPer` 0.18, `padOutFor` 1.0, `cardLag` 0.1, `cardFor` 0.9, `handLead` 0.1, `slotLead` 0.05, `handKey` 0.55, `handBlock` 0.40 |
-| Where the JSON goes next | `shrinkAt` 26.6, `shrinkTo` 29.0, `fanAt` 27.0, `fanFor` 1.0, `destAt` 27.2, `destFor` 2.0, `destPer` 0.22 |
-| The close | `ctaAt` 32.9, `ctaTo` 34.1, `end` 35 |
+Anchors are the entries fixed to a plain number — `cutAt`, `ctaAt`, `end`. Everything else
+hangs off them. Suffixes are consistent: `At` is when something starts, `For` how long it
+takes, `To` when it ends, `Per` the stagger between the three keys or the five destinations.
 
-One entry is not a time: `threadLit` (0.85) is the fraction of a thread's draw at which its
-cells begin to light, so it follows the thread however you retime it.
+One entry is not a time at all: `threadLit` (0.85) is the fraction of a thread's draw at
+which its cells begin to light, so it follows the thread however you retime it.
 
-### Four things that do not follow automatically
+### In the browser
 
-`derive()` handles the couplings *within* the morph. Four constraints run between beats,
-and those are yours to keep:
+`window.T` is the resolved table, so a single value can still be nudged from the console to
+get a feel for it:
 
-  1. **Captions do not move with their beat.** They sit in `CAPTIONS` just below `T`, each
-     with its own absolute window. Retime the threads and the caption over them stays put.
-  2. **`flightAt` must not come before `morphAt + growFor`** — the keys and values finish
-     growing before they fly. Currently 23.2 against 22.6.
-  3. **`shrinkAt` must not come before `T.landsAt`** — the JSON has to be assembled before
-     it shrinks to make room for the destinations. Currently 26.6 against 26.16.
-  4. **`end` must not come before `ctaTo`**, or the last of the video is unreachable.
-
-Beyond those, ordinary reading order: the names before the specification, the specification
-before the rows lift, the rows before the threads that leave them.
-
-There is also no "shift everything after here" operation. Each beat's `At` is absolute, so
-taking two seconds out of the middle means moving every `At` that follows. If retiming turns
-into a lot of that, the fix is to derive the later beats from the earlier ones, exactly as
-`derive()` already does inside the morph.
-
-### Then make it permanent
-
-```
-uv run python video/make_video.py
-uv run --group video python video/check.py
-uv run --group video python video/contact.py 20:26:0.5
+```javascript
+T.threadAt = 10; seek(11)
 ```
 
-Regenerate, check, and look at the frames either side of what you moved.
+But the timeline is resolved in Python, so **the console only holds numbers, not
+relationships** — nothing else moves with it, and the couplings will be inconsistent until
+you reload. Use it to eyeball one value; make the actual change in `timeline()`, where the
+relationships live.
 
 ## Checking it
 

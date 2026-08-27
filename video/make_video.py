@@ -16,6 +16,7 @@ video/check.py.  The page is self-contained and needs no server.
 
 import json
 import re
+import sys
 import tomllib
 from importlib.resources import as_file
 from pathlib import Path
@@ -57,6 +58,158 @@ def resolve(ref, workbook):
         ref = workbook.defined_names[ref].attr_text.split("!", 1)[1]
     a1 = ref.replace("$", "")
     return a1 if ":" in a1 else f"{a1}:{a1}"
+
+
+class Timeline:
+    """Named instants and durations, each fixed absolutely or against one already fixed.
+
+    Reading a name that has not been fixed yet is an error, and so is fixing one twice.
+    Between them those two rules mean the timeline reads top to bottom: whatever a line
+    depends on is above it, nothing can refer forwards, and no cycle can be written down.
+    Resolution is therefore just running the function.
+
+    Values are rounded, because a chain of additions otherwise arrives at 26.159999999999997
+    and every listing of the timeline is then unreadable.
+    """
+
+    def __init__(self):
+        object.__setattr__(self, "_at", {})
+
+    def __getattr__(self, name):
+        try:
+            return self._at[name]
+        except KeyError:
+            raise AttributeError(
+                f"the timeline uses {name!r} before fixing it -- a point must be defined "
+                f"above every line that refers to it"
+            ) from None
+
+    def __setattr__(self, name, value):
+        if name in self._at:
+            raise ValueError(f"the timeline fixes {name!r} twice "
+                             f"(already {self._at[name]}s)")
+        self._at[name] = round(float(value), 4)
+
+    def values(self):
+        return dict(self._at)
+
+    def listing(self):
+        return "\n".join(f"  {v:>7.2f}  {k}" for k, v in self._at.items())
+
+
+def timeline():
+    """Every instant and duration in the animation, in the order they happen.
+
+    Anchors are absolute; everything else hangs off the beat before it.  That is what makes
+    the video retimable: moving one anchor moves the whole of what follows, and the
+    relationships that have to hold -- the flight starting after the growing finishes, the
+    JSON shrinking only once it has finished assembling -- hold by construction rather than
+    by being remembered.  Durations sit beside the instants they measure.
+    """
+    t = Timeline()
+    t.end = 35                                   # how far the scrubber runs
+
+    # the crowded opener calms down, and we cut to the clean workbook
+    t.cutAt = 3.0
+    t.cutFor = 1.4
+    t.cutTo = t.cutAt + t.cutFor
+
+    # the named ranges are the workbook's own property, so they arrive with the workbook
+    t.namesAt = t.cutTo + 0.2
+    t.namesFor = 1.0
+
+    # the specification slides in from the left
+    t.specAt = t.namesAt + 0.4
+    t.specFor = 2.2
+    t.specTo = t.specAt + t.specFor
+
+    # the rows lift one by one, each bringing its own reference onto the sheet with it
+    t.liftAt = t.specTo + 1.2
+    t.liftPer = 0.35                             # the stagger between the three
+    t.liftFor = 0.4
+    t.chipFor = 0.8
+    t.liftTo = t.liftAt + 2 * t.liftPer + t.liftFor
+
+    # threads draw from staggered starts to a shared arrival, and the cells light
+    t.threadAt = t.liftTo + 2.5
+    t.threadPer = 0.4
+    t.threadFor = 5.5
+    t.threadTo = t.threadAt + t.threadFor
+    t.threadLit = 0.85                           # a fraction of the draw, not an instant
+    t.litOutFor = 0.35
+
+    # the morph: the keys and values grow while everything else is stripped away
+    t.morphAt = t.threadTo + 3.5
+    t.showAt = t.morphAt - 0.02                  # flyers take over before anything moves
+    t.growFor = 1.6
+    t.padFor = 0.9
+    t.chromeGone = t.morphAt + 1.4               # threads and lifted rows have gone
+    t.stripAt = t.morphAt + 0.4                  # the sheet under the flyers starts to go
+    t.stripFor = 1.6
+    t.stripTo = t.stripAt + t.stripFor
+    t.litTo = t.stripTo                          # lit cells go out as the sheet finishes
+
+    # ...and then fly, arriving as the JSON
+    t.flightAt = t.morphAt + t.growFor + 0.6     # only once the growing has finished
+    t.flightFor = 2.2
+    t.flightTo = t.flightAt + t.flightFor
+    t.flightPer = 0.18
+    t.padOutFor = 1.0
+    t.padTo = t.flightAt + t.padOutFor
+    t.cardAt = t.flightAt + 0.1
+    t.cardFor = 0.9
+    t.cardTo = t.cardAt + t.cardFor              # solid before the first flyer lands
+    t.handLead = 0.1
+    t.slotLead = 0.05
+    t.handKey = 0.55                             # a key hands over more slowly than...
+    t.handBlock = 0.40                           # ...a block of values, which is messier
+    t.landsAt = t.flightTo + 2 * t.flightPer + t.handBlock   # the morph is over here
+
+    # where the JSON goes next
+    t.shrinkAt = t.landsAt + 0.44                # never before the JSON has assembled
+    t.shrinkFor = 2.4
+    t.shrinkTo = t.shrinkAt + t.shrinkFor
+    t.fanAt = t.shrinkAt + 0.4
+    t.fanFor = 1.0
+    t.destAt = t.fanAt + 0.2
+    t.destFor = 2.0
+    t.destPer = 0.22
+
+    # the close
+    t.ctaAt = 32.9
+    t.ctaFor = 1.2
+    t.ctaTo = t.ctaAt + t.ctaFor
+
+    # Everything above holds by construction except the order of the beats themselves: a
+    # negative offset, or an anchor moved too far, can put one before the one it follows.
+    beats = ["cutAt", "namesAt", "specAt", "liftAt", "threadAt", "morphAt",
+             "flightAt", "shrinkAt", "fanAt", "ctaAt"]
+    for earlier, later in zip(beats, beats[1:]):
+        if getattr(t, later) <= getattr(t, earlier):
+            raise ValueError(f"{later} ({getattr(t, later)}s) does not follow "
+                             f"{earlier} ({getattr(t, earlier)}s)")
+    if t.ctaTo > t.end:
+        raise ValueError(f"the closing card ends at {t.ctaTo}s, past the end at {t.end}s")
+    return t
+
+
+def captions(t):
+    """What is said on screen, anchored to the beats it belongs to.
+
+    Each caption owns a window and a fade; win() keeps it at zero opacity outside that, so
+    the one displayed is simply the first whose window has not closed.  Anchoring them here
+    is what stops a retimed beat leaving its own caption behind.
+    """
+    return [
+        ["Have you ever had to extract data from a spreadsheet like this?",
+         0.3, t.cutAt + 0.4, 0.5],
+        ["A cell.  A table.  A pair of columns.",
+         t.threadAt + 0.5, t.morphAt - 0.4, 0.6],
+        ["Your spreadsheet is never modified.",
+         t.morphAt + 0.8, t.shrinkAt - 0.2, 0.6],
+        ["JSON goes anywhere.",
+         t.shrinkAt + 1.6, t.ctaAt - 0.3, 0.6],
+    ]
 
 
 def grid(path, max_row=9, max_col=9):
@@ -144,8 +297,9 @@ def dense_grid(path, sheet, rows=30, cols=20):
     return f'<table class="sheet dense"><tr><th></th>{letters}</tr>{"".join(out)}</table>'
 
 
-def build():
+def build(show_timeline=False):
     book, spec = HERE / "quarter.xlsx", HERE / "quarter.toml"
+    t = timeline()
     data = read_spec(str(book), str(spec))
     rows = tomllib.loads(spec.read_text())["extract"]
     wb = load_workbook(book)
@@ -168,10 +322,14 @@ def build():
         "ranges": ranges,
         "labels": labels,
         "colours": COLOURS,
+        "T": t.values(),
+        "captions": captions(t),
     }
     html = TEMPLATE.replace("__PAYLOAD__", json.dumps(payload))
     (HERE / "introducer.html").write_text(html, encoding="utf-8")
     print(f"wrote {HERE / 'introducer.html'}")
+    if show_timeline:
+        print(t.listing())
 
 
 TEMPLATE = r"""<!doctype html>
@@ -421,68 +579,14 @@ function buildMorph(){
   j.style.opacity=saved[0]; sp.style.transform=saved[1];
 }
 
-/* ---------------------------------------------------------------------------------------
-   The timeline, in one place.  Seconds throughout, and times only -- the geometric
-   magnitudes stay beside the transforms that use them, where they mean something.  The one
-   exception is threadLit, which is a gate expressed as progress rather than as a clock.
+/* The timeline is resolved in Python: see timeline() in make_video.py, where every point
+   is fixed either absolutely or against one already fixed, so that moving an anchor moves
+   everything hanging off it.  What arrives here is the answer rather than the reasoning --
+   a flat table of instants and durations, in seconds, and the captions already anchored to
+   the beats they belong to. */
+const T = D.T, CAPTIONS = D.captions;
+window.T = T;                    /* single values can still be nudged from the console */
 
-   Anything that has to line up with something else is DERIVED from it rather than typed
-   again.  Two numbers that merely happen to agree look independent, and the next person to
-   retime this will move one of them and not the other.  The couplings that matter:
-
-     - the flyers take over an instant BEFORE the sheet beneath them starts to fade,
-       otherwise the handover shows as a gap or as a doubled image;
-     - the cells stop being lit exactly WHEN the sheet has finished fading;
-     - the JSON card is solid BEFORE the first flyer lands on it, or they land on grey;
-     - each JSON slot appears just BEFORE its flyer leaves, never after.
---------------------------------------------------------------------------------------- */
-const T = {
-  end: 35,
-  /* the crowded opener calms down, and we cut to the clean workbook */
-  cutAt: 3.0, cutFor: 1.4,
-  /* the named ranges, which are the workbook's own property */
-  namesAt: 4.6, namesFor: 1.0,
-  /* the specification, arriving from the left */
-  specAt: 5.0, specFor: 2.2,
-  /* the rows lifting one by one, each bringing its own reference with it */
-  liftAt: 8.4, liftPer: 0.35, liftFor: 0.4, chipFor: 0.8,
-  /* threads: staggered starts, a shared arrival, and the fraction at which cells light */
-  threadAt: 12.0, threadPer: 0.4, threadTo: 17.5, threadLit: 0.85, litOutFor: 0.35,
-  /* the morph: grow, strip everything else away, fly, hand over */
-  morphAt: 21.0, growFor: 1.6, padFor: 0.9, chromeGone: 22.4,
-  stripLag: 0.4, stripFor: 1.6,
-  flightAt: 23.2, flightTo: 25.4, flightPer: 0.18, padOutFor: 1.0,
-  cardLag: 0.1, cardFor: 0.9, handLead: 0.1, slotLead: 0.05,
-  handKey: 0.55, handBlock: 0.40,
-  /* and where the JSON goes next */
-  shrinkAt: 26.6, shrinkTo: 29.0,
-  fanAt: 27.0, fanFor: 1.0, destAt: 27.2, destFor: 2.0, destPer: 0.22,
-  ctaAt: 32.9, ctaTo: 34.1,
-};
-/* The couplings, in one place and in one direction.  Call derive() after changing anything
-   in T -- from the console as much as from the code -- or these keep their old values and
-   the very relationships the table exists to protect come quietly apart. */
-function derive(){
-  T.showAt  = T.morphAt - 0.02;          /* flyers take over just before anything moves... */
-  T.stripAt = T.morphAt + T.stripLag;    /* ...and before the sheet under them starts to go */
-  T.stripTo = T.stripAt + T.stripFor;
-  T.litTo   = T.stripTo;                 /* lit cells go out as the sheet finishes fading */
-  T.padTo   = T.flightAt + T.padOutFor;
-  T.cardAt  = T.flightAt + T.cardLag;    /* solid before the first flyer lands on it */
-  T.cardTo  = T.cardAt + T.cardFor;
-  T.landsAt = T.flightTo + 2*T.flightPer + T.handBlock;   /* the morph is over here */
-}
-derive();
-window.T = T; window.derive = derive;    /* so the timeline can be tried out in the console */
-
-/* Each caption owns its own window, so the one on screen is simply the first whose window
-   has not yet closed; win() keeps it at zero opacity until its moment arrives. */
-const CAPTIONS = [
-  ['Have you ever had to extract data from a spreadsheet like this?', 0.3, 3.4, 0.5],
-  ['A cell.  A table.  A pair of columns.', 12.5, 20.6, 0.6],
-  ['Your spreadsheet is never modified.', 21.8, 26.4, 0.6],
-  ['JSON goes anywhere.', 28.2, 32.6, 0.6],
-];
 function seek(t){
   document.getElementById('t').value=t;
   document.getElementById('tv').textContent=t.toFixed(2)+'s';
@@ -595,4 +699,4 @@ addEventListener('load',()=>{ fit(); buildLabels(); buildThreads(); buildMorph()
 """
 
 if __name__ == "__main__":
-    build()
+    build(show_timeline="--timeline" in sys.argv)

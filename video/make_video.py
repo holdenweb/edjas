@@ -25,13 +25,24 @@ from openpyxl import load_workbook
 
 from edjas import read_spec
 
-try:  # the opener is a real published workbook, so it comes from the examples package
-    from edjas_examples import DATA
-except ModuleNotFoundError:  # pragma: no cover - a checkout-only tool, not shipped code
-    raise SystemExit(
-        "video/make_video.py needs the edjas-examples package: run `uv sync` "
-        "in the repository root, then `uv run python video/make_video.py`."
-    )
+
+
+def opener_workbook():
+    """The real published workbook the opener shows off.
+
+    Imported here rather than at module level so that the other videos in this directory
+    can borrow Timeline and the sheet readers without needing the examples package, which
+    only this animation's opening shot uses.
+    """
+    try:
+        from edjas_examples import DATA
+    except ModuleNotFoundError:  # pragma: no cover - a checkout-only tool, not shipped code
+        raise SystemExit(
+            "video/make_video.py needs the edjas-examples package: run `uv sync` "
+            "in the repository root, then `uv run python video/make_video.py`."
+        )
+    return DATA / "slgfs.xlsx"
+
 
 HERE = Path(__file__).resolve().parent
 COLOURS = {  # Okabe-Ito: distinguishable under the common colour-vision deficiencies
@@ -310,7 +321,7 @@ def build(show_timeline=False):
         f'<span class="k">{k}</span> = <span class="v">"{v}"</span></div>'
         for k, v in rows.items()
     )
-    with as_file(DATA / "slgfs.xlsx") as slgfs:
+    with as_file(opener_workbook()) as slgfs:
         dense = dense_grid(slgfs, "Scotland")
         tabs = load_workbook(slgfs, read_only=True).sheetnames[:26]
     payload = {

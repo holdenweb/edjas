@@ -141,8 +141,9 @@ docs/md/
 docs/_zensical/
 docs/zensical.toml
 
-# Introducer animation build output (regenerate with video/make_video.py)
+# Animation build output (regenerate with video/make_video.py, video/narrated.py)
 video/introducer.html
+video/narrated.html
 video/frames/
 video/contact.png
 

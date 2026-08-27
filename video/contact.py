@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-PAGE = HERE / "introducer.html"
+DEFAULT_PAGE = "introducer.html"
 END = 34
 
 
@@ -35,7 +35,7 @@ def chromium(playwright):
         return playwright.chromium.launch(executable_path=str(cached[-1]))
 
 
-def frame(browser, width=1400, height=900, pin=True):
+def frame(browser, width=1400, height=900, pin=True, page_name=DEFAULT_PAGE):
     """The introducer, loaded from disk with its build passes done.
 
     fit(1) matters for capture: the page sizes itself to the viewport, so without it the
@@ -43,20 +43,21 @@ def frame(browser, width=1400, height=900, pin=True):
     pin=False to leave the page at the scale it chose, which is what the scale-invariance
     check needs -- pinning it there would make that check unable to fail.
     """
-    if not PAGE.exists():
-        raise SystemExit(f"{PAGE} does not exist -- run video/make_video.py first")
+    path = HERE / page_name
+    if not path.exists():
+        raise SystemExit(f"{path} does not exist -- build it first")
     page = browser.new_page(viewport={"width": width, "height": height})
-    page.goto(PAGE.as_uri())
+    page.goto(path.as_uri())
     page.wait_for_function("typeof seek === 'function' && FLY.length && TAGS.length")
     if pin:
         page.evaluate("fit(1)")
     return page
 
 
-def times(args):
+def times(args, end=END):
     """Instants to capture: bare numbers, start:stop:step ranges, or the whole timeline."""
     if not args:
-        return [float(t) for t in range(END + 1)]
+        return [float(t) for t in range(int(end) + 1)]
     out = []
     for arg in args:
         if ":" in arg:
@@ -68,7 +69,7 @@ def times(args):
     return out
 
 
-def capture(wanted):
+def capture(wanted, page_name=DEFAULT_PAGE):
     from playwright.sync_api import sync_playwright
 
     out = HERE / "frames"
@@ -77,7 +78,7 @@ def capture(wanted):
         stale.unlink()
     with sync_playwright() as playwright:
         browser = chromium(playwright)
-        page = frame(browser)
+        page = frame(browser, page_name=page_name)
         stage = page.locator("#stage")
         for t in wanted:
             page.evaluate(f"seek({t})")
@@ -102,8 +103,15 @@ def tile(files, columns=5, width=400):
 
 
 if __name__ == "__main__":
-    wanted = times(sys.argv[1:])
-    files = capture(wanted)
+    argv = sys.argv[1:]
+    # --page picks which animation to shoot; everything else is an instant or a range
+    page_name = DEFAULT_PAGE
+    if "--page" in argv:
+        i = argv.index("--page")
+        page_name = argv[i + 1]
+        argv = argv[:i] + argv[i + 2:]
+    wanted = times(argv, end=32 if "narrated" in page_name else END)
+    files = capture(wanted, page_name)
     sheet = tile(files, columns=5 if len(files) > 8 else 2,
                  width=400 if len(files) > 8 else 620)
     path = HERE / "contact.png"

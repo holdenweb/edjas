@@ -17,13 +17,13 @@ Exits non-zero if either fails.
 
 import sys
 
-from contact import chromium, frame
+from contact import DEFAULT_PAGE, chromium, frame
 
 # The flyers are the only things that move far enough to leave the frame, and they carry
 # their own transforms, so their boxes are what a bounds check has to look at.
 BOUNDS = """() => {
   const s = document.getElementById('stage').getBoundingClientRect(), bad = [];
-  for (let t = 0; t <= 35.0001; t += 0.05) {
+  for (let t = 0; t <= T.end + 0.0001; t += 0.05) {
     seek(+t.toFixed(2));
     for (const f of FLY) {
       if (+f.el.style.opacity < 0.05) continue;
@@ -54,7 +54,7 @@ GEOMETRY = """() => {
 VIEWPORTS = [(1400, 900), (900, 620), (2200, 1300), (700, 500)]
 
 
-def main():
+def main(page_name=DEFAULT_PAGE):
     from playwright.sync_api import sync_playwright
 
     failures = []
@@ -62,11 +62,11 @@ def main():
         browser = chromium(playwright)
 
         errors = []
-        page = frame(browser)
+        page = frame(browser, page_name=page_name)
         page.on("pageerror", lambda e: errors.append(str(e)))
         offstage = page.evaluate(BOUNDS)
         page.close()
-        print(f"seek() over 0-35s at 0.05s: {len(errors)} page errors, "
+        print(f"seek() over the whole timeline at 0.05s: {len(errors)} page errors, "
               f"{len(offstage)} elements out of frame")
         if errors:
             failures.append(f"page errors: {errors[:3]}")
@@ -75,7 +75,7 @@ def main():
 
         reference = None
         for width, height in VIEWPORTS:
-            page = frame(browser, width, height, pin=False)
+            page = frame(browser, width, height, pin=False, page_name=page_name)
             seen = page.evaluate(GEOMETRY)
             page.close()
             if reference is None:
@@ -93,4 +93,5 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    argv = sys.argv[1:]
+    sys.exit(main(argv[argv.index("--page") + 1] if "--page" in argv else DEFAULT_PAGE))

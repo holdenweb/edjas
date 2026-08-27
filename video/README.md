@@ -1,4 +1,26 @@
-# The EDJAS introducer
+# The EDJAS introducers
+
+Two animations, from two programs. `make_video.py` is the original, built shot by shot;
+`narrated.py` is an experiment cut to a written voiceover, which is a different discipline
+and produced a different film. They share the workbook, the specification, the `Timeline`
+class and the checking tools, and nothing else.
+
+| | length | opens on | how the JSON arrives |
+|---|---|---|---|
+| `make_video.py` | ~34s | a wall of government data | the keys and values cross-fade into a rendered block |
+| `narrated.py` | 30s | the example workbook itself | the cells stack, the labels align, then the punctuation fills in around them |
+
+`narrated.py` carries its script in the module docstring, times the beats off it directly,
+and shows the lines as subtitles so the animation can be checked against the words. The
+subtitles switch off from the transport when it is time to film.
+
+```
+uv run python video/narrated.py
+uv run --group video python video/check.py --page narrated.html
+uv run --group video python video/contact.py --page narrated.html
+```
+
+## make_video.py
 
 A ~34-second animation of what EDJAS does, generated from the real package: a crowded
 government workbook, a small specification, three references resolving, and the JSON they

@@ -136,17 +136,21 @@ def cues(script):
 
 # API, report, database, dashboard, web site -- in the order the script names them, with the
 # offset from the centre each travels to.  Stroke-drawn on currentColor so they inherit.
+#
+# At three times the size these need real room, and bottom centre is no longer available:
+# a destination there would sit under the subtitle.  So four take the corners and the fifth
+# goes above the box, which leaves the lower middle of the frame to the words.
 ICONS = [
-    ("An API", -430, -170,
+    ("An API", -440, -150,
      '<path d="M9 6 4 12l5 6"/><path d="M15 6l5 6-5 6"/>'),
-    ("A report", 330, -195,
+    ("A report", 440, -150,
      '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8.5 8h7M8.5 12h7M8.5 16h4"/>'),
-    ("A database", -470, 75,
+    ("A database", -440, 155,
      '<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/>'
      '<path d="M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/>'),
-    ("A dashboard", 380, 55,
+    ("A dashboard", 440, 155,
      '<path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l3.5-4.5"/><path d="M4 17h16"/>'),
-    ("A web site", -40, 235,
+    ("A web site", 0, -255,
      '<circle cx="12" cy="12" r="8"/><path d="M4 12h16"/>'
      '<path d="M12 4a12 12 0 0 1 0 16 12 12 0 0 1 0-16"/>'),
 ]
@@ -548,10 +552,16 @@ TEMPLATE = r"""<!doctype html>
              color:var(--c); }
 
   #icons .dest { position:absolute; left:50%; top:50%; display:flex; flex-direction:column;
-                 align-items:center; gap:7px; opacity:0; color:var(--ink); }
-  #icons svg { width:46px; height:46px; fill:none; stroke:currentColor; stroke-width:1.7;
-               stroke-linecap:round; stroke-linejoin:round; }
-  #icons .name { font-size:16px; font-weight:600; }
+                 align-items:center; gap:10px; opacity:0; color:var(--ink); }
+  /* Drawn at the size they finish at and scaled down for the journey, so the stroke is
+     resolved once: growing a 46px icon threefold would give it a nine-pixel line. */
+  #icons svg { width:138px; height:138px; fill:none; stroke:currentColor; stroke-width:0.95;
+               stroke-linecap:round; stroke-linejoin:round; transform-origin:50% 50%; }
+  #icons .name { font-size:18px; font-weight:600; }
+  /* An <svg> is a replaced element: inset:0 leaves it at its intrinsic 300x150 and clips
+     everything drawn outside that, exactly as #threads above says.  It needs real size. */
+  #rays { position:absolute; inset:0; width:1280px; height:720px; pointer-events:none; }
+  #rays path { fill:none; stroke:#8a7fa6; stroke-width:2.5; stroke-linecap:round; }
 
   #install { position:absolute; inset:0; display:grid; place-items:center; opacity:0;
              background:rgba(255,255,255,.82); }
@@ -575,6 +585,7 @@ TEMPLATE = r"""<!doctype html>
   <svg class="layer" id="threads"></svg>
   <div class="layer"><div id="json"></div></div>
   <div class="layer"><div id="box">JSON</div></div>
+  <svg class="layer" id="rays"></svg>
   <div class="layer" id="morph"></div>
   <div class="layer" id="icons"></div>
   <div class="layer" id="install"><div class="card"></div></div>
@@ -734,6 +745,45 @@ function buildFlyers(){
   j.style.opacity=wasO;
 }
 
+/* Arrows from the JSON box out to each destination.  Measured, like everything else: each
+   destination is put into its final position for a moment so its icon can be read off the
+   page, rather than the offsets being trusted to say where the drawing ends up -- the icon
+   sits above its label, so the two are not the same point. */
+let RAYS=[];
+function buildArrows(){
+  const rays=document.getElementById('rays');
+  rays.innerHTML='<defs>'+D.icons.map((_,i)=>
+    `<marker id="head${i}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5"`+
+    ` markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#8a7fa6"/></marker>`
+  ).join('')+'</defs>';
+  const b=box(document.getElementById('box'));
+  RAYS=[];
+  [...document.querySelectorAll('#icons .dest')].forEach((d,i)=>{
+    const [,dx,dy]=D.icons[i];
+    const saved=d.style.transform;
+    d.style.transform=`translate(-50%,-50%) translate(${dx}px,${dy}px)`;
+    const g=box(d.querySelector('svg'));
+    const dr=box(d);                                   /* the icon and its label together */
+    d.style.transform=saved;
+    const vx=g.cx-b.cx, vy=g.cy-b.cy, span=Math.hypot(vx,vy);
+    const ux=vx/span, uy=vy/span;
+    /* Leave the card at its edge and stop where the ray meets the destination -- the whole
+       destination, not just the icon.  The one directly above the box has its label between
+       the two, and an arrow aimed at the icon would run straight through the words. */
+    const out=Math.min(Math.abs((b.w/2+16)/(ux||1e-6)), Math.abs((b.h/2+16)/(uy||1e-6)));
+    const pad=14;
+    const x0=dr.x-pad-b.cx, x1=dr.x+dr.w+pad-b.cx;
+    const y0=dr.y-pad-b.cy, y1=dr.y+dr.h+pad-b.cy;
+    const stop=Math.max(ux===0 ? -Infinity : (ux>0 ? x0/ux : x1/ux),
+                        uy===0 ? -Infinity : (uy>0 ? y0/uy : y1/uy));
+    const p=document.createElementNS('http://www.w3.org/2000/svg','path');
+    p.setAttribute('marker-end',`url(#head${i})`);
+    rays.appendChild(p);
+    RAYS.push({el:p, x0:b.cx+ux*out, y0:b.cy+uy*out,
+               x1:b.cx+ux*stop, y1:b.cy+uy*stop});
+  });
+}
+
 function seek(t){
   document.getElementById('t').value=t;
   document.getElementById('tv').textContent=t.toFixed(2)+'s';
@@ -816,8 +866,15 @@ function seek(t){
   [...document.querySelectorAll('#icons .dest')].forEach((d,i)=>{
     const at=D.iconAt[i], k=ph(t,at,at+T.iconFor);
     const [,dx,dy]=D.icons[i];
-    d.style.transform=`translate(-50%,-50%) translate(${dx*k}px,${dy*k}px) scale(${0.25+0.75*k})`;
+    d.style.transform=`translate(-50%,-50%) translate(${dx*k}px,${dy*k}px)`;
     d.style.opacity=Math.min(1,k*2.2);
+    /* it leaves the box at the size it has always been and arrives three times that */
+    d.querySelector('svg').style.transform=`scale(${(1+2*k)/3})`;
+    const r=RAYS[i]; if(!r) return;
+    /* the head follows the icon out rather than waiting at the far end for it: a marker is
+       drawn at the path's end whatever the dash pattern says, so the path itself grows */
+    r.el.setAttribute('d', `M${r.x0},${r.y0} L${r.x0+(r.x1-r.x0)*k},${r.y0+(r.y1-r.y0)*k}`);
+    r.el.style.opacity = k>0.04 ? Math.min(1,(k-0.04)*4) : 0;
   });
 
   document.getElementById('install').style.opacity =
@@ -842,7 +899,7 @@ document.getElementById('subs').onchange=()=>seek(+document.getElementById('t').
 document.getElementById('t').max=T.end;
 
 addEventListener('load',()=>{
-  fit(); placeSpec(); buildLabels(); buildThreads(); buildFlyers(); seek(0);
+  fit(); placeSpec(); buildLabels(); buildThreads(); buildFlyers(); buildArrows(); seek(0);
 });
 </script>
 """

@@ -133,10 +133,16 @@ dist/
 # Wing IDE remote-debugger stub (dev-only, not part of the package)
 wingdbstub.py
 
-# Documentation-site build output
+# Documentation-site build output. docs/md and docs/zensical.toml are written by
+# docs/build_md.py and docs/_zensical by zensical itself; all three are derived from the
+# canonical sources and would only ever be committed stale.
 docs/_site/
+docs/md/
+docs/_zensical/
+docs/zensical.toml
 
 # Introducer animation build output (regenerate with video/make_video.py)
 video/introducer.html
 video/frames/
 video/contact.png
+

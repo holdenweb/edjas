@@ -6,26 +6,9 @@ motivated the first version is cut, to keep the whole thing inside thirty second
 assembles the JSON rather than cross-fading into it: the cells stack, the labels align to
 the top of each block, and only then does the punctuation arrive around them.
 
-The timings below are the voiceover's, and the timeline is built from them directly, so a
-line of the script and a beat of the animation cannot drift apart:
-
-    0:00  spreadsheet fades in                    Here's an example spreadsheet,
-    0:02  labels appear                           with a couple of named ranges.
-    0:04  specification fades in                  EDJAS lets you describe and name the
-                                                  data you want.  For example
-    0:10  title row lights, snakes out            a single cell
-    0:11  sales row lights, snakes out            a columnar table
-    0:12  hours row lights, snakes out            or a set of keys and values
-    0:14  threads arrive, ranges highlight        Your spreadsheet is never modified.
-    0:17  backgrounds fade, outlines appear       The names and values
-    0:19  data stacked, labels aligned to it      are packaged into a JSON data set.
-    0:22  outlines fade, text shrinks, JSON fills Almost everything can consume JSON,
-    0:26  JSON becomes a box, icons fan out       turning your spreadsheets into valuable
-                                                  data sources.
-
-Everything on screen is still real: the grid is the workbook, the specification is the
-.toml beside it, and the JSON is what read_spec() returns -- token by token, each value
-carrying the address of the cell it came from, which is what lets the cells fly into it.
+The script is in SCRIPT below, verbatim, with the second each line is spoken.  Everything
+else follows from it: the timeline's anchors are those seconds and the subtitles are those
+words, so a change to the script is a change to the film and the two cannot drift apart.
 
     uv run python video/narrated.py             # -> video/narrated.html
     uv run python video/narrated.py --timeline  # ...and print what the beats resolved to
@@ -42,6 +25,41 @@ from edjas import read_spec
 from make_video import COLOURS, Timeline, reference, resolve
 
 HERE = Path(__file__).resolve().parent
+
+# The thirty-second script, verbatim: the beat it cues, the second it is spoken, the
+# animation it calls for, and the words.  Retiming the video means retiming the script,
+# which is the right way round when the words come first and the pictures follow.
+SCRIPT = [
+    ("sheet", 0.0, "spreadsheet fades in",
+     "Here's an example spreadsheet,"),
+    ("names", 2.0, "labels appear",
+     "with a couple of named ranges."),
+    ("spec", 4.0, "specifications fade in",
+     "EDJAS lets you describe and name the data you want. For example"),
+    ("title", 10.0, "title row highlights and begins snaking towards the spreadsheet",
+     "a single cell"),
+    ("sales", 11.0, "sales row highlights and begins snaking towards the spreadsheet",
+     "a columnar table"),
+    ("hours", 12.0, "hours row highlights and begins snaking towards the spreadsheet",
+     "or a set of keys and values"),
+    ("hold", 14.0, "all three animated threads reach their destination ranges, "
+     "which highlight",
+     "Your spreadsheet is never modified."),
+    ("strip", 17.0, "background to specification and spreadsheet begins to fade, "
+     "data and keys are surrounded by an outline",
+     "The names and values"),
+    ("stack", 19.0, "the data items are stacked vertically, and the labels are vertically "
+     "aligned with the top of the relevant data item",
+     "are packaged into a JSON data set."),
+    ("flow", 22.0, "the outlines fade away, the text shrinks, and the remainder of the "
+     "JSON appears",
+     "Almost everything can consume JSON,"),
+    ("box", 26.0, "the JSON document shrinks to a box labelled JSON, and the API, report, "
+     "database, dashboard and web site icons appear over it and zoom out into position",
+     "turning your spreadsheets into valuable data sources."),
+]
+CUE = {beat: at for beat, at, _, _ in SCRIPT}
+
 
 # API, report, database, dashboard, web site -- in the order the script names them, with the
 # offset from the centre each travels to.  Stroke-drawn on currentColor so they inherit.
@@ -70,35 +88,40 @@ def timeline():
     t = Timeline()
     t.end = 32                                   # 30s of script, and a moment to breathe
 
-    t.sheetAt = 0.2                              # "Here's an example spreadsheet,"
+    t.sheetAt = CUE["sheet"] + 0.2               # "Here's an example spreadsheet,"
     t.sheetFor = 1.4
 
-    t.namesAt = 2.0                              # "with a couple of named ranges."
+    t.namesAt = CUE["names"]                     # "with a couple of named ranges."
     t.namesFor = 1.2
 
-    t.specAt = 4.0                               # "EDJAS lets you describe and name..."
-    t.specFor = 1.8
+    # "EDJAS lets you describe and name the data you want.  For example" runs for six
+    # seconds, so the panel arrives and then names itself a line at a time rather than
+    # landing whole and leaving the screen still while the sentence finishes.
+    t.specAt = CUE["spec"]
+    t.specFor = 1.0
+    t.specRowAt = t.specAt + 0.6
+    t.specRowPer = 1.7
+    t.specRowFor = 0.9
+    t.specRowsTo = t.specRowAt + 2 * t.specRowPer + t.specRowFor
 
-    # "...For example / a single cell / a columnar table / or a set of keys and values"
-    t.threadAt = 10.0
-    t.threadPer = 1.0                            # one row per second, as spoken
-    t.threadTo = 14.0                            # and a shared arrival
-    t.rowFor = 0.5                               # a specification row lighting up
+    # "a single cell / a columnar table / or a set of keys and values", a row at a time
+    t.threadAt = CUE["title"]
+    t.threadPer = CUE["sales"] - CUE["title"]
+    t.threadTo = CUE["hold"]                     # and a shared arrival
+    t.liftFor = 0.5                              # a specification row lighting up
     t.litFor = 0.6                               # a range highlighting as its thread lands
 
-    # 14.0 - 17.0 holds:  "Your spreadsheet is never modified."
-
-    t.stripAt = 17.0                             # "The names and values"
+    t.stripAt = CUE["strip"]                     # "The names and values"
     t.stripFor = 1.4
     t.showAt = t.stripAt - 0.02                  # the flyers take over just before
     t.outlineAt = t.stripAt + 0.3
     t.outlineFor = 0.9
 
-    t.stackAt = 19.0                             # "are packaged into a JSON data set."
+    t.stackAt = CUE["stack"]                     # "are packaged into a JSON data set."
     t.stackFor = 2.6
     t.stackTo = t.stackAt + t.stackFor
 
-    t.flowAt = 22.0                              # "Almost everything can consume JSON,"
+    t.flowAt = CUE["flow"]                       # "Almost everything can consume JSON,"
     t.flowFor = 2.8
     t.flowTo = t.flowAt + t.flowFor
     t.outlineOutFor = 0.8
@@ -108,12 +131,19 @@ def timeline():
     t.cardTo = t.cardAt + 1.2
     t.handFor = 0.7                              # flyers out as the real tokens come in
 
-    t.boxAt = 26.0                               # "turning your spreadsheets into..."
+    t.boxAt = CUE["box"]                         # "turning your spreadsheets into..."
     t.boxFor = 1.6
     t.iconAt = t.boxAt + 0.5
     t.iconPer = 0.5
     t.iconFor = 1.3
     t.iconsTo = t.iconAt + (len(ICONS) - 1) * t.iconPer + t.iconFor
+
+    if CUE["hours"] - CUE["sales"] != t.threadPer:
+        raise ValueError("the three rows are not evenly spaced in the script; the animation "
+                         "staggers them by one interval and would drift from the words")
+    if t.specRowsTo > t.threadAt:
+        raise ValueError(f"the specification is still arriving at {t.specRowsTo}s when the "
+                         f"first row is due to light at {t.threadAt}s")
 
     beats = ["sheetAt", "namesAt", "specAt", "threadAt", "stripAt", "stackAt",
              "flowAt", "boxAt"]
@@ -133,19 +163,7 @@ def subtitles(t):
     holds to the end.  They are the reason the video exists in this shape, so they are
     shown by default and switched off from the transport when it is time to film.
     """
-    lines = [
-        (t.sheetAt, "Here's an example spreadsheet,"),
-        (t.namesAt, "with a couple of named ranges."),
-        (t.specAt, "EDJAS lets you describe and name the data you want.  For example"),
-        (t.threadAt, "a single cell"),
-        (t.threadAt + t.threadPer, "a columnar table"),
-        (t.threadAt + 2 * t.threadPer, "or a set of keys and values"),
-        (t.threadTo, "Your spreadsheet is never modified."),
-        (t.stripAt, "The names and values"),
-        (t.stackAt, "are packaged into a JSON data set."),
-        (t.flowAt, "Almost everything can consume JSON,"),
-        (t.boxAt, "turning your spreadsheets into valuable data sources."),
-    ]
+    lines = [(at, line) for _, at, _, line in SCRIPT]
     ends = [start for start, _ in lines[1:]] + [t.end]
     return [[text, start, end] for (start, text), end in zip(lines, ends)]
 
@@ -570,11 +588,17 @@ function seek(t){
   spec.style.opacity=specIn*(1-strip);
   spec.style.transform=`translateX(${(specIn-1)*40}px)`;
 
-  /* a row lights, and its thread snakes across to the range it names */
+  /* Each line of the specification arrives on its own, which gives the six seconds of
+     "describe and name the data you want" something to do; then a row lights and its
+     thread snakes across to the range it names. */
   KEYS.forEach((k,i)=>{
+    const arrive=T.specRowAt+i*T.specRowPer;
+    const written=ph(t,arrive,arrive+T.specRowFor);
     const at=T.threadAt+i*T.threadPer;
-    const up=ph(t,at,at+T.rowFor)*(1-strip);
+    const up=ph(t,at,at+T.liftFor)*(1-strip);
     const row=document.getElementById('s'+k);
+    row.style.opacity=written;
+    row.style.transform=`translateX(${(written-1)*16}px)`;
     row.style.background = up ? `rgba(255,255,255,${up})` : '';
     row.style.boxShadow  = up ? `0 ${8*up}px ${26*up}px rgba(0,0,0,${0.22*up})` : '';
     row.style.outline    = up ? `${2*up}px solid ${D.colours[k]}` : '';

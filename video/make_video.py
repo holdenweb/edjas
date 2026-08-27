@@ -534,8 +534,19 @@ function buildThreads(){
     const row=box(document.getElementById('s'+key));
     const [tl,br]=D.ranges[key].split(':');
     const a=box(document.getElementById('c'+tl)), b=box(document.getElementById('c'+br));
-    const x1=row.x+row.w, y1=row.cy;               /* out of the spec's right-hand edge... */
-    const x2=a.x,         y2=(a.y+b.y+b.h)/2;      /* ...into the range's left-hand edge   */
+    /* Out of the specification's right-hand edge, into the range's left-hand edge -- but
+       not at its middle.  A thread bound for the far side of the sheet sags below its own
+       row before it climbs, and clips the corner of any block it passes; aiming below the
+       bottom of whatever lies to the left keeps it underneath and still lands it squarely. */
+    const floor=Math.max(0, ...KEYS.map(o=>{
+      if(o===key) return 0;
+      const [otl,obr]=D.ranges[o].split(':');
+      const start=box(document.getElementById('c'+otl));
+      const finish=box(document.getElementById('c'+obr));
+      return start.x < a.x ? finish.y+finish.h+18 : 0;
+    }));
+    const x1=row.x+row.w, y1=row.cy, x2=a.x;
+    const y2=Math.min(Math.max((a.y+b.y+b.h)/2, floor), b.y+b.h-10);
     const p=document.createElementNS('http://www.w3.org/2000/svg','path');
     p.setAttribute('d',`M${x1},${y1} C${x1+70},${y1} ${x2-70},${y2} ${x2},${y2}`);
     p.setAttribute('stroke',D.colours[key]); p.id='p'+key;

@@ -1,0 +1,114 @@
+The 90-second version :(
+
+Extracting data from spreadsheets can be a nightmare.
+Now there's a way to get just what you want from even the most complex designs.
+
+[spreadsheet fades in]
+Here's an example spreadsheet,
+
+[labels appear]
+with a couple of named ranges.
+
+[specifications fade in]
+EDJAS uses a simple language to let you describe and name the data you want.
+That might be
+
+[title row highlights and begins snaking towards the spreadsheet]
+a single cell
+
+[sales row highlights and begins snaking towards the spreadsheet]
+a columnar table
+
+[hours rowhighlights and begins snaking towards the spreadsheet]
+or a set of keys and values
+using exactly the same conventions you use in your spreadsheets,
+including named ranges and off-sheet references.
+
+[all three animated threads reach their destination ranges, which highlight]
+Your spreadsheet is never modified.
+
+[Background to specification and spreadsheet begins to fade, data and keys are surrounded by an outline]
+Each name is then attached to the specified data.
+
+[The data items are stacked vertically, and the labels are vertically aligned with the top of the relevant data item]
+are packaged into a JSON data set.
+
+[The outlines fade away, the text shrinks, and the remainder of the JSON appears]
+Almost everything can consume JSON, including APIS,
+
+[The JSON document starts to shrink, to become a box labelled JSON]
+[The API icon appears over the JSON block and enlarges while zooming out to its final position]
+reports
+
+[The report icon appears over the JSON block and enlarges while zooming out to its final position]
+databases
+
+[The database icon appears over the JSON block and enlarges while zooming out to its final position]
+dashboards and
+
+[The dashboard icon appears over the JSON block and enlarges while zooming out to its final position]
+web pages
+
+[The web site icon appears over the JSON block and enlarges while zooming out to its final position]
+This turns your spreadsheets into data sources to drive your business processes.
+
+[An overlay fades in showing sample pip and uv installation commands]
+Best of all, it's open source so you can build it in to your business processes wherever it's needed!
+
+
+
+
+
+
+
+The 30-second version
+
+-- 0:00
+
+[spreadsheet fades in]
+Here's an example spreadsheet,
+-- 0:02
+
+[labels appear]
+with a couple of named ranges.
+-- 0:04
+
+[specifications fade in]
+EDJAS lets you describe and name the data you want. For example
+-- 0:10
+[title row highlights and begins snaking towards the spreadsheet]
+a single cell
+-- 0:11
+
+[sales row highlights and begins snaking towards the spreadsheet]
+a columnar table
+-- 0:12
+
+[hours rowhighlights and begins snaking towards the spreadsheet]
+or a set of keys and values
+-- 0:14
+
+[all three animated threads reach their destination ranges, which highlight]
+Your spreadsheet is never modified.
+-- 0:17
+
+[Background to specification and spreadsheet begins to fade, data and keys are surrounded by an outline]
+The names and values
+-- 0:19
+
+[The data items are stacked vertically, and the labels are vertically aligned with the top of the relevant data item]
+are packaged into a JSON data set.
+-- 0:22
+
+[The outlines fade away, the text shrinks, and the remainder of the JSON appears]
+Almost everything can consume JSON,
+-- 0:26
+
+[The JSON document starts to shrink, to become a box labelled JSON]
+[The API icon appears over the JSON block and enlarges while zooming out to its final position]
+[The report icon appears over the JSON block and enlarges while zooming out to its final position]
+[The database icon appears over the JSON block and enlarges while zooming out to its final position]
+[The dashboard icon appears over the JSON block and enlarges while zooming out to its final position]
+[The web site icon appears over the JSON block and enlarges while zooming out to its final position]
+turning your spreadsheets into valuable data sources.
+-- 0:30

@@ -129,7 +129,7 @@ wheels = [
 
 [[package]]
 name = "edjas"
-version = "0.7.5.dev1"
+version = "0.8.0"
 source = { editable = "." }
 dependencies = [
     { name = "openpyxl" },

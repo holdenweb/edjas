@@ -40,7 +40,8 @@ SHORT = [
      "with a couple of named ranges."),
     ("spec", 6.0, "specifications fade in",
      "EDJAS lets you describe and name the data you want. For example"),
-    ("title", 1.0, "title row highlights and begins snaking towards the spreadsheet",
+    ("title", 1.0, "title row highlights, its cell is outlined to match, and a thread "
+     "begins snaking towards it",
      "a single cell"),
     ("sales", 1.0, "sales row highlights and begins snaking towards the spreadsheet",
      "a columnar table"),
@@ -58,8 +59,9 @@ SHORT = [
     ("flow", 4.0, "the outlines fade away, the text shrinks, and the remainder of the "
      "JSON appears",
      "Almost everything can consume JSON,"),
-    ("box", 4.0, "the JSON document shrinks to a box labelled JSON, and the API, report, "
-     "database, dashboard and web site icons appear over it and zoom out into position",
+    ("box", 4.0, "the JSON shrinks to a box labelled JSON while the destinations appear "
+     "where they finish; the spreadsheet arrives below it, a thick arrow feeds the box, "
+     "and then an arrow reaches out to each destination",
      "turning your spreadsheets into valuable data sources."),
 ]
 
@@ -81,7 +83,8 @@ LONG = [
     ("spec", 7.0, "specifications fade in, a line at a time",
      "EDJAS uses a simple language to let you describe and name the data you want. "
      "That might be"),
-    ("title", 1.5, "title row highlights and begins snaking towards the spreadsheet",
+    ("title", 1.5, "title row highlights, its cell is outlined to match, and a thread "
+     "begins snaking towards it",
      "a single cell"),
     ("sales", 1.5, "sales row highlights and begins snaking towards the spreadsheet",
      "a columnar table"),
@@ -103,16 +106,16 @@ LONG = [
     ("flow", 4.5, "the outlines fade away, the text shrinks, and the remainder of the "
      "JSON appears",
      "Almost everything can consume JSON,"),
-    ("apis", 2.0, "the JSON document shrinks to a box labelled JSON, and the API icon "
-     "appears over it and zooms out into position",
+    ("apis", 2.0, "the box has formed and been fed from the spreadsheet; an arrow "
+     "reaches out to the APIs",
      "including APIs,"),
-    ("reports", 1.6, "the report icon appears over the JSON block and zooms out",
+    ("reports", 1.6, "an arrow reaches out to the reports",
      "reports"),
-    ("databases", 1.8, "the database icon appears over the JSON block and zooms out",
+    ("databases", 1.8, "an arrow reaches out to the databases",
      "databases"),
-    ("dashboards", 1.8, "the dashboard icon appears over the JSON block and zooms out",
+    ("dashboards", 1.8, "an arrow reaches out to the dashboards",
      "dashboards and"),
-    ("web", 2.0, "the web site icon appears over the JSON block and zooms out",
+    ("web", 2.0, "an arrow reaches out to the web sites",
      "web pages"),
     ("sources", 5.0, "the destinations hold",
      "This turns your spreadsheets into data sources to drive your business processes."),
@@ -145,7 +148,8 @@ LOOK = {
 
     # the JSON, the box it becomes, and the stacked arrangement on the way
     "json-size": "17px", "json-ink": "#1e1a2b", "json-paper": "#e8e2f5",
-    "box-size": "26px", "stack-size": "20px",
+    "box-size": "34px", "box-pad": "20px 38px", "stack-size": "20px",
+    "sel-weight": "3px",                         # the outline a spec line puts on its range
 
     # the destinations
     "icon-size": "138px", "icon-weight": "0.95", "icon-label": "18px",
@@ -198,16 +202,16 @@ def cues(script):
 # destinations take the top corners, the sides and the top, and everything below the box
 # reads downwards: box, feed arrow, spreadsheet, words.
 ICONS = [
-    ("An API", -440, -170,
+    ("APIs", -440, -170,
      '<path d="M9 6 4 12l5 6"/><path d="M15 6l5 6-5 6"/>'),
-    ("A report", 440, -170,
+    ("reports", 440, -170,
      '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8.5 8h7M8.5 12h7M8.5 16h4"/>'),
-    ("A database", -490, 55,
+    ("databases", -490, 55,
      '<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/>'
      '<path d="M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/>'),
-    ("A dashboard", 490, 55,
+    ("dashboards", 490, 55,
      '<path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l3.5-4.5"/><path d="M4 17h16"/>'),
-    ("A web site", 0, -265,
+    ("web sites", 0, -265,
      '<circle cx="12" cy="12" r="8"/><path d="M4 12h16"/>'
      '<path d="M12 4a12 12 0 0 1 0 16 12 12 0 0 1 0-16"/>'),
 ]
@@ -256,6 +260,7 @@ def timeline(script):
     t.threadPer = round(CUE["sales"] - CUE["title"], 3)
     t.threadTo = CUE["hold"]                     # and a shared arrival
     t.liftFor = 0.5                              # a specification row lighting up
+    t.snakeLag = 0.45                            # ...and its range outlined, before it sets off
     t.litFor = 0.6                               # a range highlighting as its thread lands
 
     # "including named ranges and off-sheet references" -- so they swell as it is said
@@ -576,16 +581,18 @@ __LOOK__
   .sheet td { border:1px solid var(--rule); padding:3px 7px; min-width:58px; height:26px;
               white-space:nowrap; }
 
-  #labels .rbox { position:absolute; border-radius:3px; outline-offset:1px; }
-  #labels .rbox.name { outline:2px dashed var(--c); }
-  #labels .rbox.address { outline:2px solid var(--c); }
+  #labels .rbox { position:absolute; border-radius:3px; outline-offset:1px;
+                  outline:2px dashed var(--c); }
+  /* What a line of the specification designates, outlined solid in that line's own colour.
+     It comes up as the line lights and takes the dashed name outline's place, so the sheet
+     shows the workbook's own annotation until the specification claims the same cells. */
+  #labels .sel { position:absolute; border-radius:3px; outline-offset:1px; opacity:0;
+                 outline:var(--sel-weight) solid var(--c); }
   #labels .chip { position:absolute; height:19px; display:flex; align-items:center;
                   transform-origin:0 50%;
                   padding:0 7px; border-radius:5px; font-size:12px; font-weight:700;
                   white-space:nowrap; }
-  #labels .chip.name { background:var(--c); color:#fff; }
-  #labels .chip.address { background:#fff; color:var(--c); border:1.5px solid var(--c);
-                          font-family:ui-monospace,"SF Mono",Menlo,monospace; }
+  #labels .chip { background:var(--c); color:#fff; }
 
   /* The panel's vertical position is set from the measured layout, not here: each row has to
      sit below the bottom of every range to its left, or its thread reaches the far side of
@@ -623,10 +630,10 @@ __LOOK__
   #json .jk { font-weight:700; }
 
   #box { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-         background:var(--json-ink); color:#fff; border-radius:12px; padding:16px 30px;
+         background:var(--json-ink); color:#fff; border-radius:14px; padding:var(--box-pad);
          opacity:0; font-family:ui-monospace,Menlo,monospace; font-size:var(--box-size);
-         font-weight:700;
-         box-shadow:0 16px 44px rgba(0,0,0,.34); }
+         font-weight:700; letter-spacing:.02em;
+         box-shadow:0 20px 54px rgba(0,0,0,.40); }
 
   #morph { pointer-events:none; opacity:0; }
   .fly { position:absolute; transform-origin:0 0; white-space:nowrap; display:flex;
@@ -773,13 +780,21 @@ function buildLabels(){
   for(const key of KEYS){
     const [tl,br]=D.ranges[key].split(':');
     const a=box(document.getElementById('c'+tl)), b=box(document.getElementById('c'+br));
-    const w=b.x+b.w-a.x, h=b.y+b.h-a.y, k=D.labels[key].kind;
+    const w=b.x+b.w-a.x, h=b.y+b.h-a.y;
+    const rect=`left:${a.x}px;top:${a.y}px;width:${w}px;height:${h}px`;
     const g=document.createElement('div');
     g.style.cssText=`--c:${D.colours[key]};position:absolute;inset:0`;
-    g.innerHTML=
-      `<div class="rbox ${k}" style="left:${a.x}px;top:${a.y}px;width:${w}px;height:${h}px"></div>`+
-      `<div class="chip ${k}" style="left:${a.x}px;top:${a.y-22}px">${D.labels[key].text}</div>`;
-    L.appendChild(g); TAGS.push(g);
+    /* Only a name gets an annotation of its own.  A bare cell address has nothing to show
+       for it -- it is not the workbook's property, it is what the specification types -- and
+       labelling it invited the question of what the label was naming. */
+    g.innerHTML=(D.labels[key].kind==='name'
+      ? `<div class="rbox" style="${rect}"></div>`+
+        `<div class="chip" style="left:${a.x}px;top:${a.y-22}px">${D.labels[key].text}</div>`
+      : '')+`<div class="sel" style="${rect}"></div>`;
+    L.appendChild(g);
+    TAGS.push({el:g, named:D.labels[key].kind==='name',
+               sel:g.querySelector('.sel'), rbox:g.querySelector('.rbox'),
+               chip:g.querySelector('.chip')});
   }
 }
 
@@ -928,7 +943,8 @@ function seek(t){
   const sheetIn=ph(t,T.sheetAt,T.sheetAt+T.sheetFor)*(1-strip);
   document.getElementById('sheetLayer').style.opacity=sheetIn;
   const labels=document.getElementById('labels');
-  labels.style.opacity=ph(t,T.namesAt,T.namesAt+T.namesFor)*(1-strip);
+  labels.style.opacity=1-strip;
+  const named=ph(t,T.namesAt,T.namesAt+T.namesFor);
   /* "including named ranges and off-sheet references" -- so they swell as it is said.
      Only touched when a script asks for it: even scale(1) promotes the chip to a layer of
      its own and changes how its text is antialiased, which shows up as a differing frame. */
@@ -950,6 +966,14 @@ function seek(t){
     const written=ph(t,arrive,arrive+T.specRowFor);
     const at=T.threadAt+i*T.threadPer;
     const up=ph(t,at,at+T.liftFor)*(1-strip);
+    /* the line lights, and the cells it designates are outlined in the same colour --
+       the dashed name outline giving way to it -- before anything sets off across */
+    const tag=TAGS[i];
+    if(tag){
+      tag.sel.style.opacity=up;
+      if(tag.rbox) tag.rbox.style.opacity=named*(1-up);
+      if(tag.chip) tag.chip.style.opacity=named;
+    }
     const row=document.getElementById('s'+k);
     row.style.opacity=written;
     row.style.transform=`translateX(${(written-1)*16}px)`;
@@ -958,7 +982,7 @@ function seek(t){
     row.style.outline    = up ? `${2*up}px solid ${D.colours[k]}` : '';
 
     const p=document.getElementById('p'+k); if(!p) return;
-    const drawn=ph(t, at, T.threadTo);
+    const drawn=ph(t, at+T.snakeLag, T.threadTo);   /* only once the outline has landed */
     p.style.strokeDashoffset=p.getTotalLength()*(1-drawn);
     p.style.opacity=1-ph(t,T.stripAt,T.stripAt+T.stripFor*0.7);
 

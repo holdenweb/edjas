@@ -129,10 +129,14 @@ targets are read back out of the rendered page.
 
 The three references in `quarter.toml` are deliberately of different kinds — a bare cell
 address, a named range extracted as a list, a named range extracted as an object — and the
-sheet is annotated to say so. The `Sales` and `Hours` badges are the workbook's own
-property, so they appear with the workbook; `B2` is not in the workbook at all, so it
-appears with the line of the specification that types it. Both labels are derived from the
-spec at build time, not hardcoded.
+sheet is annotated to say so. Only a *name* gets an annotation: the `Sales` and `Hours`
+badges are the workbook's own property and appear with the workbook, while `B2` shows
+nothing, because there is nothing there to label. Both labels are derived from the spec at
+build time, not hardcoded.
+
+In the narrated films, a line of the specification then claims its cells as it lights: the
+designated area is outlined solid in that line's own colour, taking the dashed name
+outline's place, and only once that has landed does the thread set off across.
 
 ## Editing the timeline
 

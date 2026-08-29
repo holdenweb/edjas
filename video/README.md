@@ -8,7 +8,7 @@ two.
 | | length | opens on | closes on |
 |---|---|---|---|
 | `make_video.py` | ~34s | a wall of government data | a fan of destinations |
-| `narrated.py` | 30s | the example workbook | five icons round a JSON box |
+| `narrated.py` | 30s | the example workbook | a spreadsheet feeding a JSON box feeding five destinations |
 | `narrated.py --long` | ~72s | the wall of data, as the problem | the installation commands |
 
 ```
@@ -51,7 +51,7 @@ at zero opacity throughout. That is why both cuts come out of one program withou
 carrying the other's machinery — and the short film is unchanged, frame for frame, by the
 long one having been added.
 
-## make_video.py## make_video.py
+## make_video.py
 
 A ~34-second animation of what EDJAS does, generated from the real package: a crowded
 government workbook, a small specification, three references resolving, and the JSON they

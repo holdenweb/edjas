@@ -137,20 +137,21 @@ def cues(script):
 # API, report, database, dashboard, web site -- in the order the script names them, with the
 # offset from the centre each travels to.  Stroke-drawn on currentColor so they inherit.
 #
-# At three times the size these need real room, and bottom centre is no longer available:
-# a destination there would sit under the subtitle.  So four take the corners and the fifth
-# goes above the box, which leaves the lower middle of the frame to the words.
+# At three times the size these need real room, and the lower middle of the frame is spoken
+# for twice over -- by the subtitle, and by the spreadsheet the JSON is fed from.  So the
+# destinations take the top corners, the sides and the top, and everything below the box
+# reads downwards: box, feed arrow, spreadsheet, words.
 ICONS = [
-    ("An API", -440, -150,
+    ("An API", -440, -170,
      '<path d="M9 6 4 12l5 6"/><path d="M15 6l5 6-5 6"/>'),
-    ("A report", 440, -150,
+    ("A report", 440, -170,
      '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8.5 8h7M8.5 12h7M8.5 16h4"/>'),
-    ("A database", -440, 155,
+    ("A database", -490, 55,
      '<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/>'
      '<path d="M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/>'),
-    ("A dashboard", 440, 155,
+    ("A dashboard", 490, 55,
      '<path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l3.5-4.5"/><path d="M4 17h16"/>'),
-    ("A web site", 0, -255,
+    ("A web site", 0, -265,
      '<circle cx="12" cy="12" r="8"/><path d="M4 12h16"/>'
      '<path d="M12 4a12 12 0 0 1 0 16 12 12 0 0 1 0-16"/>'),
 ]
@@ -217,9 +218,12 @@ def timeline(script):
     t.stackTo = t.stackAt + t.stackFor
 
     t.flowAt = CUE["flow"]                       # "Almost everything can consume JSON,"
-    t.boxAt = CUE["apis"] if "apis" in CUE else CUE["box"]
-    t.flowFor = round(min(2.8, t.boxAt - t.flowAt - 0.6), 3)
+    t.destAt = CUE["apis"] if "apis" in CUE else CUE["box"]   # when destinations start
+    t.flowFor = round(min(2.8, t.destAt - t.flowAt - 0.6), 3)
     t.flowTo = t.flowAt + t.flowFor
+    # Where the script names the destinations one at a time, the box has to have formed and
+    # been fed before the first of them is spoken, so it goes as soon as the JSON is whole.
+    t.boxAt = CUE["box"] if "box" in CUE else round(t.flowTo + 0.2, 3)
     t.outlineOutFor = 0.8
     t.synAt = t.flowAt + 0.9                     # the remainder of the JSON arrives
     t.synFor = 1.8
@@ -227,10 +231,20 @@ def timeline(script):
     t.cardTo = t.cardAt + 1.2
     t.handFor = 0.7                              # flyers out as the real tokens come in
 
+    # The destinations are simply there, at the size and place they finish, as the JSON
+    # becomes a box -- nothing travels.  What arrives afterwards is the flow: the spreadsheet
+    # the data came from, a thick arrow feeding the box, and then one arrow per destination
+    # as the words reach it.
     t.boxFor = 1.6
-    t.iconAt = t.boxAt + 0.5                     # only used when the icons are not cued
-    t.iconPer = 0.5
-    t.iconFor = 1.3
+    t.iconsAt = t.boxAt + 0.4
+    t.iconsFor = 1.0
+    t.miniAt = t.boxAt + 0.6                     # the spreadsheet it all came out of
+    t.miniFor = 0.8
+    t.feedAt = t.boxAt + 0.8
+    t.feedFor = 0.7
+    t.rayFor = 0.7                               # one destination arrow drawing
+    t.rayAt = t.feedAt + t.feedFor               # where they start when not cued...
+    t.rayPer = 0.5                               # ...and how far apart
 
     # an overlay of installation commands, on the long cut only
     t.hasInstall = 1 if "install" in CUE else 0
@@ -250,18 +264,18 @@ def timeline(script):
         if getattr(t, later) <= getattr(t, earlier):
             raise ValueError(f"{later} ({getattr(t, later)}s) does not follow "
                              f"{earlier} ({getattr(t, earlier)}s)")
-    last = icon_starts(CUE, t)[-1] + t.iconFor
+    last = ray_starts(CUE, t)[-1] + t.rayFor
     if last > t.end:
         raise ValueError(f"the last icon settles at {last}s, past the end at {t.end}s")
     return t
 
 
-def icon_starts(CUE, t):
-    """When each destination arrives: on its own word where the script names them one by
-    one, otherwise on a fixed stagger after the box forms."""
+def ray_starts(CUE, t):
+    """When each destination's arrow draws: on its own word where the script names them one
+    by one, otherwise on a fixed stagger once the feed arrow has arrived."""
     if all(cue in CUE for cue in ICON_CUES):
         return [CUE[cue] for cue in ICON_CUES]
-    return [round(t.iconAt + i * t.iconPer, 3) for i in range(len(ICONS))]
+    return [round(t.rayAt + i * t.rayPer, 3) for i in range(len(ICONS))]
 
 
 def subtitles(script, t):
@@ -305,7 +319,7 @@ def _cell(value):
     return "" if value is None else str(value)
 
 
-def sheet_html(path, max_row=9, max_col=9):
+def sheet_html(path, max_row=9, max_col=9, ids=True):
     """The workbook's cells, each value wrapped in a span of its own.
 
     The morph measures text, not the boxes text happens to sit in: a cell is 26px tall
@@ -321,8 +335,12 @@ def sheet_html(path, max_row=9, max_col=9):
         for c in range(1, max_col + 1):
             addr = f"{letters[c - 1]}{r}"
             value = _cell(ws.cell(row=r, column=c).value)
-            span = f'<span class="cv" id="cv-{addr}">{value}</span>' if value else ""
-            cells.append(f'<td id="c{addr}">{span}</td>')
+            # the shrunken copy at the end takes no ids: two elements answering to cB2
+            # would be invalid, and getElementById would quietly pick whichever came first
+            cell_id = f' id="c{addr}"' if ids else ""
+            span_id = f' id="cv-{addr}"' if ids else ""
+            span = f'<span class="cv"{span_id}>{value}</span>' if value else ""
+            cells.append(f"<td{cell_id}>{span}</td>")
         rows.append("<tr>" + "".join(cells) + "</tr>")
     return f'<table class="sheet">{"".join(rows)}</table>' 
 
@@ -439,7 +457,8 @@ def build(script=SHORT, out="narrated.html", show_timeline=False):
         "labels": labels,
         "colours": COLOURS,
         "icons": [[n, dx, dy, d] for n, dx, dy, d in ICONS],
-        "iconAt": icon_starts(CUE, t),
+        "rayAt": ray_starts(CUE, t),
+        "mini": sheet_html(book, ids=False),
         "T": t.values(),
         "subtitles": subtitles(script, t),
     }
@@ -556,12 +575,21 @@ TEMPLATE = r"""<!doctype html>
   /* Drawn at the size they finish at and scaled down for the journey, so the stroke is
      resolved once: growing a 46px icon threefold would give it a nine-pixel line. */
   #icons svg { width:138px; height:138px; fill:none; stroke:currentColor; stroke-width:0.95;
-               stroke-linecap:round; stroke-linejoin:round; transform-origin:50% 50%; }
+               stroke-linecap:round; stroke-linejoin:round; }
   #icons .name { font-size:18px; font-weight:600; }
   /* An <svg> is a replaced element: inset:0 leaves it at its intrinsic 300x150 and clips
      everything drawn outside that, exactly as #threads above says.  It needs real size. */
   #rays { position:absolute; inset:0; width:1280px; height:720px; pointer-events:none; }
   #rays path { fill:none; stroke:#8a7fa6; stroke-width:2.5; stroke-linecap:round; }
+  #rays path.feed { stroke:#5b5170; stroke-width:9; }
+  /* the workbook it all came out of, the real grid at about a third of the size */
+  #mini .card { position:absolute; left:50%; top:552px; transform:translate(-50%,-50%);
+                width:238px; height:94px; overflow:hidden; opacity:0; background:#fff;
+                border:1px solid var(--rule); border-radius:6px;
+                box-shadow:0 8px 24px rgba(0,0,0,.18); }
+  #mini .inner { position:absolute; left:0; top:0; width:700px; height:276px;
+                 transform:scale(.34); transform-origin:0 0; }
+  #mini .inner table.sheet { left:0; top:0; }
 
   #install { position:absolute; inset:0; display:grid; place-items:center; opacity:0;
              background:rgba(255,255,255,.82); }
@@ -585,6 +613,7 @@ TEMPLATE = r"""<!doctype html>
   <svg class="layer" id="threads"></svg>
   <div class="layer"><div id="json"></div></div>
   <div class="layer"><div id="box">JSON</div></div>
+  <div class="layer" id="mini"><div class="card"><div class="inner"></div></div></div>
   <svg class="layer" id="rays"></svg>
   <div class="layer" id="morph"></div>
   <div class="layer" id="icons"></div>
@@ -611,6 +640,7 @@ document.getElementById('stack').innerHTML = D.stack;
 document.getElementById('denseLayer').innerHTML = D.dense ? D.dense +
   '<div id="tabs">' + D.denseTabs.map((n,i)=>
      `<span class="${i===0?'on':''}">${n}</span>`).join('') + '</div>' : '';
+document.querySelector('#mini .inner').innerHTML = D.mini;
 document.querySelector('#install .card').innerHTML =
   D.install.map(c=>`<code>${c}</code>`).join('');
 document.getElementById('icons').innerHTML = D.icons.map(([n,,,d])=>
@@ -749,14 +779,27 @@ function buildFlyers(){
    destination is put into its final position for a moment so its icon can be read off the
    page, rather than the offsets being trusted to say where the drawing ends up -- the icon
    sits above its label, so the two are not the same point. */
-let RAYS=[];
+let RAYS=[], FEED=null;
 function buildArrows(){
+  const NS='http://www.w3.org/2000/svg';
   const rays=document.getElementById('rays');
-  rays.innerHTML='<defs>'+D.icons.map((_,i)=>
-    `<marker id="head${i}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5"`+
-    ` markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#8a7fa6"/></marker>`
-  ).join('')+'</defs>';
+  /* markerUnits defaults to strokeWidth, so one head definition serves both weights */
+  rays.innerHTML='<defs>'+
+    '<marker id="rayHead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5"'+
+    ' markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#8a7fa6"/></marker>'+
+    '<marker id="feedHead" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="3.2"'+
+    ' markerHeight="3.2" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#5b5170"/></marker>'+
+    '</defs>';
   const b=box(document.getElementById('box'));
+
+  /* the thick one: out of the spreadsheet, into the box */
+  const m=box(document.querySelector('#mini .card'));
+  const fp=document.createElementNS(NS,'path');
+  fp.setAttribute('class','feed'); fp.setAttribute('marker-end','url(#feedHead)');
+  rays.appendChild(fp);
+  FEED={el:fp, x0:m.cx, y0:m.y-10, x1:b.cx, y1:b.y+b.h+16};
+
+  /* and one apiece out to the destinations, which are already standing where they finish */
   RAYS=[];
   [...document.querySelectorAll('#icons .dest')].forEach((d,i)=>{
     const [,dx,dy]=D.icons[i];
@@ -776,12 +819,21 @@ function buildArrows(){
     const y0=dr.y-pad-b.cy, y1=dr.y+dr.h+pad-b.cy;
     const stop=Math.max(ux===0 ? -Infinity : (ux>0 ? x0/ux : x1/ux),
                         uy===0 ? -Infinity : (uy>0 ? y0/uy : y1/uy));
-    const p=document.createElementNS('http://www.w3.org/2000/svg','path');
-    p.setAttribute('marker-end',`url(#head${i})`);
+    const p=document.createElementNS(NS,'path');
+    p.setAttribute('marker-end','url(#rayHead)');
     rays.appendChild(p);
     RAYS.push({el:p, x0:b.cx+ux*out, y0:b.cy+uy*out,
                x1:b.cx+ux*stop, y1:b.cy+uy*stop});
   });
+}
+
+/* An arrow grows towards where it is going rather than being revealed by a dash: a marker
+   is drawn at the path's end whatever the dash pattern says, so the head would otherwise
+   sit waiting at the far end from the first frame. */
+function draw(a, k){
+  a.el.setAttribute('d', `M${a.x0},${a.y0} `+
+    `L${a.x0+(a.x1-a.x0)*k},${a.y0+(a.y1-a.y0)*k}`);
+  a.el.style.opacity = k>0.04 ? Math.min(1,(k-0.04)*4) : 0;
 }
 
 function seek(t){
@@ -855,7 +907,7 @@ function seek(t){
   });
 
   const j=document.getElementById('json');
-  j.style.opacity=ph(t,T.cardAt,T.cardTo)*(1-ph(t,T.boxAt+T.boxFor*0.35,T.boxAt+T.boxFor));
+  j.style.opacity=ph(t,T.cardAt,T.cardTo)*(1-ph(t,T.boxAt+T.boxFor*0.2,T.boxAt+T.boxFor*0.75));
   j.style.transform=`translate(-50%,-50%) scale(${1-0.55*shrink})`;
   const syn=ph(t,T.synAt,T.synAt+T.synFor);
   [...j.querySelectorAll('.syn')].forEach(el=>el.style.opacity=syn);
@@ -863,18 +915,17 @@ function seek(t){
 
   /* ...which becomes a box, and feeds everything else */
   document.getElementById('box').style.opacity=ph(t,T.boxAt+T.boxFor*0.5,T.boxAt+T.boxFor);
+  /* The destinations are simply present, at the size and place they finish; then the
+     spreadsheet they all came from, the thick arrow feeding the box, and an arrow out to
+     each destination as the words reach it. */
+  const shown=ph(t,T.iconsAt,T.iconsAt+T.iconsFor);
+  document.querySelector('#mini .card').style.opacity=ph(t,T.miniAt,T.miniAt+T.miniFor);
+  if(FEED) draw(FEED, ph(t,T.feedAt,T.feedAt+T.feedFor));
   [...document.querySelectorAll('#icons .dest')].forEach((d,i)=>{
-    const at=D.iconAt[i], k=ph(t,at,at+T.iconFor);
     const [,dx,dy]=D.icons[i];
-    d.style.transform=`translate(-50%,-50%) translate(${dx*k}px,${dy*k}px)`;
-    d.style.opacity=Math.min(1,k*2.2);
-    /* it leaves the box at the size it has always been and arrives three times that */
-    d.querySelector('svg').style.transform=`scale(${(1+2*k)/3})`;
-    const r=RAYS[i]; if(!r) return;
-    /* the head follows the icon out rather than waiting at the far end for it: a marker is
-       drawn at the path's end whatever the dash pattern says, so the path itself grows */
-    r.el.setAttribute('d', `M${r.x0},${r.y0} L${r.x0+(r.x1-r.x0)*k},${r.y0+(r.y1-r.y0)*k}`);
-    r.el.style.opacity = k>0.04 ? Math.min(1,(k-0.04)*4) : 0;
+    d.style.transform=`translate(-50%,-50%) translate(${dx}px,${dy}px)`;
+    d.style.opacity=shown;
+    if(RAYS[i]) draw(RAYS[i], ph(t,D.rayAt[i],D.rayAt[i]+T.rayFor));
   });
 
   document.getElementById('install').style.opacity =

@@ -45,6 +45,45 @@ line moves its picture with it, and the checks in `timeline()` refuse a script t
 animation cannot honour — rows that are no longer evenly spaced, or a specification still
 arriving when the first row is due to light.
 
+### Pinning a line to the clock
+
+A fifth element on a script line fixes its start instead of letting it follow the one
+before:
+
+```python
+("box", 4.0, "the JSON becomes a box and the destinations appear", "turning your…", 26.0),
+```
+
+Everything after a pin flows on from there, so the two notations mix freely — durations for
+the stretch you are timing by ear, a pin where a beat has to land on the clock whatever
+precedes it. Overrunning a pin is refused rather than silently overlapped:
+
+```
+'box' is pinned to 20.0s, but the lines before it already run to 26.0s
+```
+
+`--script` marks pinned lines with a leading `=`.
+
+### The knobs
+
+`LOOK` at the top of `narrated.py` holds the visual parameters — where the workbook and the
+specification sit, line weights and colours, the size of the destinations, the scale of the
+small spreadsheet, the type sizes. Every entry reaches the page as a CSS custom property, so
+one line changes it everywhere it is used, and you can try a value live before writing it
+down:
+
+```javascript
+document.documentElement.style.setProperty('--icon-size', '180px'); seek(30)
+```
+
+What is deliberately *not* in `LOOK` is anything structural rather than chosen — the
+1280×720 frame, where the JSON lands, which cells a name covers. Those are measured or
+derived, and a knob for them would only be a way to make them disagree with the film.
+
+Line weights are chosen for the smallest context a frame is actually reviewed in, not for
+the full-size render: 2.5px is perfectly legible in the frame and vanishes at a third of
+it, which is how an arrow that was being drawn correctly came to be reported as missing.
+
 Scenes a script does not cue are switched off rather than removed: `SHORT` has no
 `nightmare` line, so `hasOpener` reaches `seek()` as 0 and the crowded-workbook layer stays
 at zero opacity throughout. That is why both cuts come out of one program without either

@@ -401,7 +401,8 @@ TEMPLATE = r"""<!doctype html>
   /* an <svg> is a replaced element: inset:0 alone leaves it at its intrinsic 300x150,
      which silently clips every thread. It needs real dimensions. */
   #threads { position:absolute; inset:0; width:1280px; height:720px; pointer-events:none; }
-  #threads path { fill:none; stroke-width:3; stroke-linecap:round;
+  /* thick enough to read in a contact-sheet tile, not only at full size */
+  #threads path { fill:none; stroke-width:5; stroke-linecap:round;
                   stroke-dasharray:var(--len); stroke-dashoffset:var(--len); }
   #json { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) scale(1);
           font-family:ui-monospace,Menlo,monospace; font-size:17px; line-height:1.55;

@@ -121,14 +121,70 @@ LONG = [
      "wherever it's needed!"),
 ]
 
+# The knobs.  Every value here reaches the page as a CSS custom property, so a change is one
+# line and takes effect everywhere the property is used -- and can be tried live in the
+# browser console before being written down:
+#
+#     document.documentElement.style.setProperty('--icon-size', '180px'); seek(30)
+#
+# Anything that is a structural fact rather than a choice -- the 1280x720 frame, where the
+# JSON lands, which cell a name covers -- is deliberately not here: those are measured or
+# derived, and a knob for them would only be a way to make them disagree with the film.
+LOOK = {
+    # where the opening arrangement sits
+    "sheet-left": "500px", "sheet-top": "150px",
+    "spec-left": "32px", "spec-top": "236px", "spec-width": "400px",
+
+    # Lines.  Thick enough to read in a contact-sheet tile, not only at full size: 2.5px is
+    # perfectly legible in the frame and disappears entirely at a third of it, which is how
+    # an arrow that was being drawn correctly came to be reported as missing.
+    "thread-weight": "5px",
+    "ray-weight": "6px", "ray-colour": "#8a7fa6",
+    "feed-weight": "10px", "feed-colour": "#5b5170",
+    "head-size": "3.2",                          # arrowhead, in stroke widths
+
+    # the JSON, the box it becomes, and the stacked arrangement on the way
+    "json-size": "17px", "json-ink": "#1e1a2b", "json-paper": "#e8e2f5",
+    "box-size": "26px", "stack-size": "20px",
+
+    # the destinations
+    "icon-size": "138px", "icon-weight": "0.95", "icon-label": "18px",
+
+    # the workbook the JSON is fed from: the real grid, scaled down
+    "mini-top": "552px", "mini-scale": "0.34", "mini-w": "700px", "mini-h": "276px",
+
+    # the words on screen
+    "sub-size": "27px", "sub-bottom": "38px", "install-size": "30px",
+}
+
+
+def look_css(look):
+    """The knobs as custom properties, for the top of the stylesheet."""
+    return "  :root {\n" + "".join(f"    --{k}: {v};\n" for k, v in look.items()) + "  }"
+
+
 INSTALL = ["pip install edjas", "uv add edjas"]
 ICON_CUES = ["apis", "reports", "databases", "dashboards", "web"]
 
 
 def cues(script):
-    """Where each line starts, from how long the ones before it last, and the total runtime."""
+    """Where each line starts, and the total runtime.
+
+    A line normally begins where the one before it ended, so timing a recording means typing
+    in how long each line took and letting the rest move out of the way.  A fifth element
+    pins a line to an absolute second instead, for a beat that has to land on the clock
+    whatever precedes it -- everything after a pin flows on from there, so the two notations
+    mix freely.  Overrunning a pin is an error rather than a silent overlap.
+    """
     at, out = 0.0, {}
-    for beat, secs, _, _ in script:
+    for entry in script:
+        beat, secs = entry[0], entry[1]
+        pinned = entry[4] if len(entry) > 4 else None
+        if pinned is not None:
+            if pinned < round(at, 3) - 1e-9:
+                raise ValueError(f"{beat!r} is pinned to {pinned}s, but the lines before it "
+                                 f"already run to {round(at, 3)}s")
+            at = float(pinned)
         out[beat] = round(at, 3)
         at = round(at + secs, 3)
     return out, round(at, 3)
@@ -459,10 +515,12 @@ def build(script=SHORT, out="narrated.html", show_timeline=False):
         "icons": [[n, dx, dy, d] for n, dx, dy, d in ICONS],
         "rayAt": ray_starts(CUE, t),
         "mini": sheet_html(book, ids=False),
+        "look": LOOK,
         "T": t.values(),
         "subtitles": subtitles(script, t),
     }
-    html = TEMPLATE.replace("__PAYLOAD__", json.dumps(payload))
+    html = (TEMPLATE.replace("__LOOK__", look_css(LOOK))
+                    .replace("__PAYLOAD__", json.dumps(payload)))
     (HERE / out).write_text(html, encoding="utf-8")
     print(f"wrote {HERE / out}")
     if show_timeline:
@@ -475,11 +533,14 @@ def listing(script):
     words -- the table to hold a stopwatch against while recording."""
     CUE, runtime = cues(script)
     out = []
-    for beat, secs, animation, words in script:
-        at = CUE[beat]
-        out.append(f"  {int(at // 60)}:{at % 60:04.1f}  +{secs:<4.1f} {beat:<11} {words}")
+    for entry in script:
+        beat, secs, animation, words = entry[:4]
+        at, pin = CUE[beat], "=" if len(entry) > 4 and entry[4] is not None else " "
+        out.append(f" {pin}{int(at // 60)}:{at % 60:04.1f}  +{secs:<4.1f} {beat:<11} {words}")
         out.append(f"                          {animation}")
-    out.append(f"\n  {len(script)} lines, {runtime}s spoken "
+    out.append(f"\n  a leading = marks a line pinned to the clock rather than "
+               f"following the one before it")
+    out.append(f"  {len(script)} lines, {runtime}s spoken "
                f"({int(runtime // 60)}:{runtime % 60:04.1f})")
     return "\n".join(out)
 
@@ -487,6 +548,7 @@ def listing(script):
 TEMPLATE = r"""<!doctype html>
 <meta charset="utf-8"><title>EDJAS narrated introducer</title>
 <style>
+__LOOK__
   :root { --ink:#1c1a22; --rule:#d8d2e4; --paper:#e8e2f5; }
   * { box-sizing:border-box; }
   html,body { height:100%; overflow:hidden; }
@@ -498,7 +560,8 @@ TEMPLATE = r"""<!doctype html>
            color:var(--ink); box-shadow:0 12px 60px rgba(0,0,0,.5); }
   .layer { position:absolute; inset:0; }
 
-  table.sheet { border-collapse:collapse; font-size:14px; position:absolute; left:500px; top:150px; }
+  table.sheet { border-collapse:collapse; font-size:14px; position:absolute;
+               left:var(--sheet-left); top:var(--sheet-top); }
   table.dense { position:absolute; left:0; top:0; font-size:10px; }
   table.dense td { min-width:62px; max-width:62px; height:21px; padding:1px 5px;
                    overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
@@ -527,7 +590,8 @@ TEMPLATE = r"""<!doctype html>
   /* The panel's vertical position is set from the measured layout, not here: each row has to
      sit below the bottom of every range to its left, or its thread reaches the far side of
      the sheet only by cutting straight through one of the others. */
-  #spec { position:absolute; left:32px; top:236px; width:400px; background:#faf8fd;
+  #spec { position:absolute; left:var(--spec-left); top:var(--spec-top);
+          width:var(--spec-width); background:#faf8fd;
           border:1px solid var(--rule); border-radius:10px; padding:16px 18px;
           font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:15px; }
   #spec .hdr { color:#8a7fa6; margin-bottom:8px; }
@@ -536,14 +600,14 @@ TEMPLATE = r"""<!doctype html>
   .srow .v { color:#3d3550; }
 
   #threads { position:absolute; inset:0; width:1280px; height:720px; pointer-events:none; }
-  #threads path { fill:none; stroke-width:3; stroke-linecap:round;
+  #threads path { fill:none; stroke-width:var(--thread-weight); stroke-linecap:round;
                   stroke-dasharray:var(--len); stroke-dashoffset:var(--len); }
 
   /* the staging layout: measured, never seen */
   /* Laid out where the stack is meant to appear and simply not painted, so the middle of
      every flyer's journey is a real position on the stage rather than a computed guess. */
   #stack { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-           opacity:0; pointer-events:none; font-size:20px; }
+           opacity:0; pointer-events:none; font-size:var(--stack-size); }
   #stack .sblock { display:flex; align-items:flex-start; gap:22px; margin-bottom:20px; }
   #stack .slab { font-family:ui-monospace,Menlo,monospace; font-weight:700; color:var(--c);
                  min-width:78px; line-height:30px; }
@@ -551,15 +615,17 @@ TEMPLATE = r"""<!doctype html>
   #stack td { padding:0 16px 0 0; height:30px; white-space:nowrap; vertical-align:middle; }
 
   #json { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-          font-family:ui-monospace,Menlo,monospace; font-size:17px; line-height:1.55;
-          background:#1e1a2b; color:var(--paper); padding:20px 28px; border-radius:12px;
+          font-family:ui-monospace,Menlo,monospace; font-size:var(--json-size);
+          line-height:1.55; background:var(--json-ink); color:var(--json-paper);
+          padding:20px 28px; border-radius:12px;
           white-space:pre; opacity:0; box-shadow:0 20px 60px rgba(0,0,0,.4); }
   #json .syn, #json .tok { opacity:0; }
   #json .jk { font-weight:700; }
 
   #box { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-         background:#1e1a2b; color:#fff; border-radius:12px; padding:16px 30px; opacity:0;
-         font-family:ui-monospace,Menlo,monospace; font-size:26px; font-weight:700;
+         background:var(--json-ink); color:#fff; border-radius:12px; padding:16px 30px;
+         opacity:0; font-family:ui-monospace,Menlo,monospace; font-size:var(--box-size);
+         font-weight:700;
          box-shadow:0 16px 44px rgba(0,0,0,.34); }
 
   #morph { pointer-events:none; opacity:0; }
@@ -574,31 +640,45 @@ TEMPLATE = r"""<!doctype html>
                  align-items:center; gap:10px; opacity:0; color:var(--ink); }
   /* Drawn at the size they finish at and scaled down for the journey, so the stroke is
      resolved once: growing a 46px icon threefold would give it a nine-pixel line. */
-  #icons svg { width:138px; height:138px; fill:none; stroke:currentColor; stroke-width:0.95;
+  #icons svg { width:var(--icon-size); height:var(--icon-size); fill:none;
+               stroke:currentColor; stroke-width:var(--icon-weight);
                stroke-linecap:round; stroke-linejoin:round; }
-  #icons .name { font-size:18px; font-weight:600; }
+  #icons .name { font-size:var(--icon-label); font-weight:600; }
   /* An <svg> is a replaced element: inset:0 leaves it at its intrinsic 300x150 and clips
      everything drawn outside that, exactly as #threads above says.  It needs real size. */
   #rays { position:absolute; inset:0; width:1280px; height:720px; pointer-events:none; }
-  #rays path { fill:none; stroke:#8a7fa6; stroke-width:2.5; stroke-linecap:round; }
-  #rays path.feed { stroke:#5b5170; stroke-width:9; }
+  /* The child combinator matters.  A <marker> is a descendant of #rays, so "#rays path"
+     selected its arrowhead as well and painted it fill:none with a stroke -- CSS beats the
+     fill presentation attribute, so the heads came out as hollow chevrons.  The lines are
+     its direct children; the heads are not, and are filled solid below. */
+  #rays > path { fill:none; stroke:var(--ray-colour); stroke-width:var(--ray-weight);
+                 stroke-linecap:round; }
+  #rays > path.feed { stroke:var(--feed-colour); stroke-width:var(--feed-weight); }
+  #rays marker path { fill:currentColor; stroke:none; }
+  #rays #rayHead { color:var(--ray-colour); }
+  #rays #feedHead { color:var(--feed-colour); }
   /* the workbook it all came out of, the real grid at about a third of the size */
-  #mini .card { position:absolute; left:50%; top:552px; transform:translate(-50%,-50%);
-                width:238px; height:94px; overflow:hidden; opacity:0; background:#fff;
+  #mini .card { position:absolute; left:50%; top:var(--mini-top);
+                transform:translate(-50%,-50%); overflow:hidden; opacity:0; background:#fff;
+                width:calc(var(--mini-w) * var(--mini-scale));
+                height:calc(var(--mini-h) * var(--mini-scale));
                 border:1px solid var(--rule); border-radius:6px;
                 box-shadow:0 8px 24px rgba(0,0,0,.18); }
-  #mini .inner { position:absolute; left:0; top:0; width:700px; height:276px;
-                 transform:scale(.34); transform-origin:0 0; }
+  #mini .inner { position:absolute; left:0; top:0;
+                 width:var(--mini-w); height:var(--mini-h);
+                 transform:scale(var(--mini-scale)); transform-origin:0 0; }
   #mini .inner table.sheet { left:0; top:0; }
 
   #install { position:absolute; inset:0; display:grid; place-items:center; opacity:0;
              background:rgba(255,255,255,.82); }
   #install .card { background:#1e1a2b; border-radius:14px; padding:26px 40px;
                    box-shadow:0 20px 60px rgba(0,0,0,.4); display:grid; gap:12px; }
-  #install code { font-family:ui-monospace,Menlo,monospace; font-size:30px; color:#fff; }
+  #install code { font-family:ui-monospace,Menlo,monospace; font-size:var(--install-size);
+                  color:#fff; }
   #install code::before { content:"$ "; color:#8a7fa6; }
-  #sub { position:absolute; left:60px; right:60px; bottom:38px; text-align:center;
-         font-size:27px; font-weight:600; color:var(--ink); opacity:0; line-height:1.3; }
+  #sub { position:absolute; left:60px; right:60px; bottom:var(--sub-bottom);
+         text-align:center; font-size:var(--sub-size); font-weight:600; color:var(--ink);
+         opacity:0; line-height:1.3; }
   #scrub { display:flex; gap:12px; align-items:center; color:#fff; flex:0 0 auto;
            font-family:system-ui; font-size:13px; }
   #scrub input[type=range] { flex:1; }
@@ -781,14 +861,14 @@ function buildFlyers(){
    sits above its label, so the two are not the same point. */
 let RAYS=[], FEED=null;
 function buildArrows(){
-  const NS='http://www.w3.org/2000/svg';
+  const NS='http://www.w3.org/2000/svg', HEAD=parseFloat(D.look['head-size']);
   const rays=document.getElementById('rays');
   /* markerUnits defaults to strokeWidth, so one head definition serves both weights */
   rays.innerHTML='<defs>'+
-    '<marker id="rayHead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5"'+
-    ' markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#8a7fa6"/></marker>'+
-    '<marker id="feedHead" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="3.2"'+
-    ' markerHeight="3.2" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#5b5170"/></marker>'+
+    `<marker id="rayHead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="${HEAD}"`+
+    ` markerHeight="${HEAD}" orient="auto"><path d="M0,0 L10,5 L0,10 z"/></marker>`+
+    `<marker id="feedHead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="${HEAD}"`+
+    ` markerHeight="${HEAD}" orient="auto"><path d="M0,0 L10,5 L0,10 z"/></marker>`+
     '</defs>';
   const b=box(document.getElementById('box'));
 
